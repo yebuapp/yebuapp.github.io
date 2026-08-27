@@ -1736,6 +1736,9 @@ var FIRST_RUN = false;
       profile.sido = null; profile.sigungu = null; profile.residencyMonths = null;
     }
     profile._v = 3;
+    // 되돌린 값이 저장소에 남아 있지 않게 즉시 저장한다(이 시점엔 서버 연동 전이라
+    // 로컬 저장만 일어난다). 안 하면 로드마다 재마이그레이션에 기대게 된다.
+    if (saved) store('yebu.profile', JSON.stringify(profile));
   }
   // 예정일·아이 생일은 자동으로 채우지 않는다 — '오늘+105일'을 넣는 순간
   // 15주차라는 지어낸 사실이 주차 안내·기한·푸시 알림까지 타고 나간다.
@@ -2257,7 +2260,9 @@ var TABS = [
   { id: 'today',   label: '오늘',   icon: 'today' },
   { id: 'todo',    label: '할 일',  icon: 'list' },
   { id: 'life',    label: '생활',   icon: 'life' },
-  { id: 'journey', label: '여정',   icon: 'path' },
+  // '여정'이었으나 탭 내용이 문자 그대로 신청 관리(30·90일 버킷, 신청 완료)라
+  // 이름을 내용에 맞췄다 — 처음 온 사람이 탭 이름만 보고 찾아올 수 있어야 한다.
+  { id: 'journey', label: '신청',   icon: 'path' },
   { id: 'money',   label: '혜택',   icon: 'money' }
 ];
 function go(t) { tab = t; store('yebu.tab', t); open = {}; render(); window.scrollTo(0, 0); var s = document.querySelector('.scroll'); if (s) s.scrollTop = 0; }
@@ -2841,7 +2846,7 @@ function viewLife() {
   return h;
 }
 
-/* ── 화면: 여정 ────────────────────────────────────────────────────────── */
+/* ── 화면: 신청(구 여정) ───────────────────────────────────────────────── */
 var BUCKETS = [
   { key: 'overdue',  title: '기한이 지났습니다', bar: 'alert' },
   { key: 'softlost', title: '지금 신청해도 일부는 못 받습니다', bar: 'alert' },
