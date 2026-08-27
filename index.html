@@ -1830,7 +1830,11 @@ function initSync() {
     var was = sync.user ? sync.user.id : null;
     sync.user = u; sync.nickname = u ? syncNickname(u) : null;
     if (!u) { sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; }
-    if (u && u.id !== was) { ensureProfileRow(); loadCouple(); }
+    if (u && u.id !== was) {
+      // 이 콜백 안에서 다른 supabase 호출을 직접 하면 인증 잠금과 교착해
+      // 조용히 실패한다(실측: 로그인 직후 profiles 행이 안 생겼다) — 밖으로 뺀다.
+      setTimeout(function () { ensureProfileRow().then(function () { return loadCouple(); }); }, 0);
+    }
     render();
   });
 }
