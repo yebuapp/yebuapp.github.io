@@ -41,6 +41,7 @@
   --hair:           #E9E6E2;
   --accent:         #3538CD;
   --accent-tint:    #EFEFFB;  /* 둥지 등 부드러운 면 채움 — 잉크 금지, 장식 전용 */
+  --blush:          #F0A8B8;  /* 일러스트 전용(볼터치·하트) — UI·텍스트 사용 금지 */
   --on-accent:      #FFFFFF;
   --fill:           #1B1A28;
   --on-fill:        #F6F5FF;
@@ -63,6 +64,7 @@
     --hair:           #1D1D23;
     --accent:         #9BA2FF;
     --accent-tint:    #20203A;
+    --blush:          #D98CA0;
     --on-accent:      #0C0C10;
     --fill:           #F1F0F4;
     --on-fill:        #0C0C10;
@@ -84,6 +86,7 @@
   --hair:           #1D1D23;
   --accent:         #9BA2FF;
   --accent-tint:    #20203A;
+  --blush:          #D98CA0;
   --on-accent:      #0C0C10;
   --fill:           #F1F0F4;
   --on-fill:        #0C0C10;
@@ -571,8 +574,10 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .nest h3{margin:0;font-size:16px}
 .nest .nest-sub{font-size:12.5px;color:var(--sub);margin:2px 0 4px}
 .nest svg{display:block;width:min(100%,300px);height:auto;margin:2px auto 6px}
-.nest-bar{height:10px;border-radius:999px;background:var(--surface);overflow:hidden;margin:2px 0 10px}
+.nest-bar-row{display:flex;align-items:center;gap:10px;margin:2px 0 10px}
+.nest-bar{flex:1;height:10px;border-radius:999px;background:var(--surface);overflow:hidden}
 .nest-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .5s ease}
+.nest-bar-label{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
 .nest-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .nest-chip{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:9px 2px;text-align:center;font-size:11.5px;color:var(--sub);line-height:1.55}
 .nest-chip b{display:block;font-weight:600;color:var(--ink);font-size:12px}
@@ -1894,17 +1899,22 @@ function weeklyCardData(a) {
     (c) => c.item && (c.item.who === a.role || c.item.who === 'both') && (c.state === 'now' || c.state === 'soon')
   );
   const doneN = mine.filter((c) => a.doneIds && a.doneIds[c.item.id]).length;
-  const rows = [];
-  if (left != null) rows.push({ k: '출산까지', v: left + '일' });
-  rows.push({ k: '이번 주 검사·진료', v: tests + '건' });
-  rows.push({ k: '지금 챙길 일', v: doneN + ' / ' + mine.length + '건 완료' });
+  // 주차의 '몇 일째'까지 — 시트 확정안의 "N주 M일" 표기. 예정일 역산이라 정확하다.
+  const dayPart = left != null ? Math.max(0, 280 - left) % 7 : null;
+  const rows = [
+    { k: '이번 주 검사·진료', v: tests + '건' },
+    { k: '지금 챙길 일', v: doneN + ' / ' + mine.length + '건 완료' },
+  ];
   return {
     kind: 'week',
+    weeks: a.weeks,
+    dayPart,
+    left,
     big: String(a.weeks),
     unit: '주차',
     title: '우리 가족의 이번 주',
     rows,
-    footer: 'yebuapp.github.io · 공식 출처로 확인한 일정입니다',
+    footer: '챙길 건 정확하게, 기다림은 함께 · yebuapp.github.io',
   };
 }
 
@@ -3440,32 +3450,90 @@ function drawBean(g, cx, cy, s) {
   g.restore();
 }
 
+/* SVG 문자열을 캔버스에 그릴 이미지로 — 카드에 둥지 장면을 싣는 유일한 경로.
+   전부 기기 안(blob URL)이라 네트워크 0. */
+function svgToImage(svgStr) {
+  return new Promise(function (res) {
+    var img = new Image();
+    var url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml' }));
+    img.onload = function () { URL.revokeObjectURL(url); res(img); };
+    img.onerror = function () { URL.revokeObjectURL(url); res(null); };
+    img.src = url;
+  });
+}
+
+function rrect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/* 카드 고정 팔레트(라이트 단일 룩 — 어느 채팅방 배경에서도 같은 얼굴) */
+var CARD_C = { accent: '#3538CD', tint: '#EFEFFB', surface: '#FFFFFF', ink: '#141313', blush: '#F0A8B8' };
+
 function drawCard(d) {
   var cv = document.createElement('canvas');
   cv.width = 1080; cv.height = 1350;
   var g = cv.getContext('2d');
-  // 카드 산출물은 라이트 단일 룩 — 어느 채팅방 배경에서도 같은 얼굴이게.
   var ink = '#141313', muted = '#6B6863', accent = '#3538CD', line = '#E3E1DB';
   var F = function (w, s) { return w + ' ' + s + 'px "IBM Plex Sans KR", sans-serif'; };
   g.fillStyle = '#FBFAF9'; g.fillRect(0, 0, 1080, 1350);
-  drawBean(g, 926, 292, 1);
   g.fillStyle = accent; g.font = F(700, 56); g.fillText('예부', 96, 156);
   g.fillStyle = muted; g.font = F(400, 34); g.textAlign = 'right'; g.fillText(d.dateStr, 984, 152); g.textAlign = 'left';
+
+  if (d.kind === 'week') {
+    // v2 — 확정 시트 구도: 제목·둥지 장면·주차 박스·체크 행·태그라인.
+    g.fillStyle = ink; g.font = F(700, 60); g.fillText(d.title, 96, 306);
+    var tw = g.measureText(d.title).width;
+    g.save(); g.translate(96 + tw + 22, 262); g.scale(2.1, 2.1);
+    g.fillStyle = CARD_C.accent; g.fill(new Path2D(HEART_D)); g.restore();
+    var scene = nestSceneSvg(d.nest || { couple: false, benefit: false, apply: false, bag: false, pct: 0 }, CARD_C, 860);
+    return svgToImage(scene).then(function (img) {
+      if (img) g.drawImage(img, 110, 340, 860, 526);
+      /* 주차 박스 */
+      g.strokeStyle = line; g.lineWidth = 3; g.fillStyle = '#FFFFFF';
+      rrect(g, 96, 902, 888, 148, 24); g.fill(); g.stroke();
+      g.strokeStyle = line; g.beginPath(); g.moveTo(560, 928); g.lineTo(560, 1024); g.stroke();
+      g.fillStyle = muted; g.font = F(400, 32); g.fillText('지금', 140, 958);
+      g.fillStyle = ink; g.font = F(700, 62);
+      g.fillText(d.weeks + '주' + (d.dayPart ? ' ' + d.dayPart + '일' : ''), 140, 1022);
+      g.fillStyle = muted; g.font = F(400, 32); g.fillText('출산까지', 604, 958);
+      g.fillStyle = accent; g.font = F(700, 62);
+      g.fillText(d.left != null ? 'D-' + d.left : '—', 604, 1022);
+      /* 체크 행 */
+      var y = 1122;
+      (d.rows || []).forEach(function (r) {
+        g.fillStyle = accent; g.beginPath(); g.arc(114, y - 12, 15, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 3.4; g.beginPath();
+        g.moveTo(107, y - 12); g.lineTo(112, y - 7); g.lineTo(122, y - 19); g.stroke();
+        g.fillStyle = ink; g.font = F(500, 40); g.fillText(r.k, 148, y);
+        g.fillStyle = accent; g.font = F(700, 40); g.textAlign = 'right'; g.fillText(r.v, 984, y); g.textAlign = 'left';
+        y += 84;
+      });
+      g.fillStyle = muted; g.font = F(400, 30); g.fillText(d.footer, 96, 1296);
+      return cv;
+    });
+  }
+
+  /* 혜택 카드 — 기존 타이포 구도 + 예부콩 심볼 */
+  drawBean(g, 926, 292, 1);
   g.fillStyle = muted; g.font = F(500, 46); g.fillText(d.title, 96, 316);
   g.fillStyle = accent; g.font = F(700, 250); g.fillText(d.big, 88, 596);
   var bw = g.measureText(d.big).width;
   g.fillStyle = ink; g.font = F(600, 64); g.fillText(d.unit, 96 + bw + 20, 590);
-  var y = 792;
+  var y2 = 792;
   (d.rows || []).forEach(function (r) {
     g.strokeStyle = line; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(96, y - 62); g.lineTo(984, y - 62); g.stroke();
-    g.fillStyle = muted; g.font = F(400, 42); g.fillText(r.k, 96, y);
-    g.fillStyle = ink; g.font = F(600, 42); g.textAlign = 'right'; g.fillText(r.v, 984, y); g.textAlign = 'left';
-    y += 122;
+    g.beginPath(); g.moveTo(96, y2 - 62); g.lineTo(984, y2 - 62); g.stroke();
+    g.fillStyle = muted; g.font = F(400, 42); g.fillText(r.k, 96, y2);
+    g.fillStyle = ink; g.font = F(600, 42); g.textAlign = 'right'; g.fillText(r.v, 984, y2); g.textAlign = 'left';
+    y2 += 122;
   });
   g.strokeStyle = line; g.beginPath(); g.moveTo(96, 1218); g.lineTo(984, 1218); g.stroke();
   g.fillStyle = muted; g.font = F(400, 32); g.fillText(d.footer, 96, 1284);
-  return cv;
+  return Promise.resolve(cv);
 }
 
 function openCard(kind) {
@@ -3476,6 +3544,7 @@ function openCard(kind) {
       weeks: D.weeks, dueDate: profile.dueDate, today: TODAY,
       timeline: TIMELINE, checkpoints: CHK, doneIds: done, role: profile.role
     });
+    d.nest = currentNest();  // 카드에도 같은 둥지가 실린다 — 같은 파생, 같은 그림.
   } else {
     d = APPLOGIC.benefitCardData({
       region: profile.sigungu || profile.sido || null,
@@ -3484,14 +3553,16 @@ function openCard(kind) {
   }
   d.dateStr = ENG.fmtDate(TODAY);
   // 폰트가 로드되기 전에 그리면 시스템 폰트로 박제된다 — 준비를 기다린다.
-  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
-    drawCard(d).toBlob(function (b) {
-      if (!b) return;
-      if (cardState.url) URL.revokeObjectURL(cardState.url);
-      cardState = { open: true, blob: b, url: URL.createObjectURL(b), kind: kind };
-      render();
-    }, 'image/png');
-  });
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
+    .then(function () { return drawCard(d); })
+    .then(function (cv) {
+      cv.toBlob(function (b) {
+        if (!b) return;
+        if (cardState.url) URL.revokeObjectURL(cardState.url);
+        cardState = { open: true, blob: b, url: URL.createObjectURL(b), kind: kind };
+        render();
+      }, 'image/png');
+    });
 }
 
 function closeCard() {
@@ -3531,53 +3602,79 @@ function cardOverlayHtml() {
 
 /* ── 예부 둥지 — 파생 전용 시각화 ─────────────────────────────────────
    상태 계산은 APPLOGIC.nestState(저장 금지·비교 금지 규칙 포함).
-   여기는 그리기만: 부드러운 무드(운영자 확정)를 토큰 색 안에서 낸다. */
-function nestCardHtml() {
-  var ns = APPLOGIC.nestState({
+   장면은 운영자 확정 시트(하트 표지판·폭신 쿠션·기대는 작은 콩·체크 깃발·
+   가방)를 벡터로 재현한 것 — 앱(토큰 색)과 공유 카드(고정 색)가 같은 그림을
+   쓰도록 색을 주입받는다. */
+var HEART_D = 'M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z';
+
+function nestSceneSvg(ns, C, w) {
+  var head = '<svg viewBox="0 0 340 208"' + (w ? ' width="' + w + '" height="' + Math.round(w * 208 / 340) + '"' : '') +
+    ' xmlns="http://www.w3.org/2000/svg" role="img" aria-label="예부 둥지 — 함께 준비한 만큼 채워집니다">';
+  var s = head +
+    /* 바닥 그늘 + 폭신 쿠션 둥지 */
+    '<ellipse cx="170" cy="182" rx="112" ry="12" fill="' + C.accent + '" opacity=".08"/>' +
+    '<ellipse cx="170" cy="158" rx="102" ry="34" fill="' + C.tint + '" stroke="' + C.accent + '" stroke-width="3" opacity=".95"/>' +
+    '<path d="M80 148 q90 46 180 0" stroke="' + C.accent + '" stroke-width="8" fill="none" stroke-linecap="round" opacity=".4"/>' +
+    '<path d="M94 162 q76 32 152 0" stroke="' + C.accent + '" stroke-width="7" fill="none" stroke-linecap="round" opacity=".26"/>' +
+    '<ellipse cx="170" cy="136" rx="74" ry="20" fill="' + C.surface + '" opacity=".85"/>';
+  /* 예부콩(나) — 항상 있다. 커플이면 왼쪽으로 비켜 앉는다 */
+  var bx = ns.couple ? 148 : 170;
+  s += '<g>' +
+    '<ellipse cx="' + bx + '" cy="112" rx="27" ry="34" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="5"/>' +
+    '<path d="M' + bx + ' 78 q2 -11 11 -13" stroke="' + C.accent + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="' + (bx - 9) + '" cy="106" r="3.2" fill="' + C.ink + '"/>' +
+    '<circle cx="' + (bx + 9) + '" cy="106" r="3.2" fill="' + C.ink + '"/>' +
+    '<path d="M' + (bx - 5) + ' 118 q5 4.5 10 0" stroke="' + C.ink + '" stroke-width="2.8" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="' + (bx - 15) + '" cy="113" r="4.5" fill="' + C.blush + '" opacity=".75"/>' +
+    '<circle cx="' + (bx + 15) + '" cy="113" r="4.5" fill="' + C.blush + '" opacity=".75"/></g>';
+  /* 예부콩(배우자) — 커플 연결에서 파생. 큰 콩에 살짝 기댄다 */
+  if (ns.couple) {
+    s += '<g transform="rotate(7 196 126)">' +
+      '<ellipse cx="196" cy="126" rx="21" ry="26" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="4.5"/>' +
+      '<path d="M196 100 q2 -8 8 -10" stroke="' + C.accent + '" stroke-width="3.4" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="189" cy="121" r="2.8" fill="' + C.ink + '"/><circle cx="203" cy="121" r="2.8" fill="' + C.ink + '"/>' +
+      '<path d="M192 131 q4 3.6 8 0" stroke="' + C.ink + '" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="185" cy="127" r="3.6" fill="' + C.blush + '" opacity=".75"/>' +
+      '<circle cx="207" cy="127" r="3.6" fill="' + C.blush + '" opacity=".75"/></g>' +
+      '<path d="' + HEART_D + '" transform="translate(163 66) scale(.8)" fill="' + C.blush + '"/>';
+  }
+  /* 하트 표지판 — 혜택 확인에서 파생 */
+  if (ns.benefit) {
+    s += '<g><line x1="56" y1="168" x2="56" y2="112" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
+      '<rect x="34" y="76" width="44" height="40" rx="12" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="4"/>' +
+      '<path d="' + HEART_D + '" transform="translate(45 85) scale(.9)" fill="' + C.blush + '"/></g>';
+  }
+  /* 체크 깃발 — 첫 신청에서 파생 */
+  if (ns.apply) {
+    s += '<g><line x1="288" y1="166" x2="288" y2="84" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
+      '<path d="M288 86 h36 l-9 12 l9 12 h-36 z" fill="' + C.accent + '"/>' +
+      '<path d="M297 98 l5 5 l10 -11" stroke="' + C.surface + '" stroke-width="3.4" fill="none" stroke-linecap="round"/></g>';
+  }
+  /* 가방 — 출산가방 완료에서 파생 */
+  if (ns.bag) {
+    s += '<g><rect x="242" y="146" width="40" height="28" rx="9" fill="' + C.tint + '" stroke="' + C.accent + '" stroke-width="4"/>' +
+      '<path d="M251 146 q11 -14 22 0" fill="none" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
+      '<path d="' + HEART_D + '" transform="translate(254 152) scale(.6)" fill="' + C.blush + '"/></g>';
+  }
+  return s + '</svg>';
+}
+
+function nestTokenColors() {
+  return { accent: 'var(--accent)', tint: 'var(--accent-tint)', surface: 'var(--surface)', ink: 'var(--ink)', blush: 'var(--blush)' };
+}
+
+function currentNest() {
+  return APPLOGIC.nestState({
     coupled: !!(sync.coupleId || profile.linkedAt),
     sido: profile.sido,
     confirmedCount: EV.counts.confirmed,
     doneIds: done
   });
-  var A = 'var(--accent)', S = 'var(--surface)', I = 'var(--ink)';
-  var svg = '<svg viewBox="0 0 320 178" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="예부 둥지 — 함께 준비한 만큼 채워집니다">' +
-    /* 방석 둥지 — 겹친 곡선으로 짠 느낌을 낸다 */
-    '<ellipse cx="160" cy="140" rx="92" ry="26" fill="' + S + '" stroke="' + A + '" stroke-width="3" opacity=".9"/>' +
-    '<path d="M78 132 q82 40 164 0" stroke="' + A + '" stroke-width="8" fill="none" stroke-linecap="round" opacity=".5"/>' +
-    '<path d="M90 144 q70 30 140 0" stroke="' + A + '" stroke-width="7" fill="none" stroke-linecap="round" opacity=".35"/>' +
-    '<path d="M104 154 q56 20 112 0" stroke="' + A + '" stroke-width="6" fill="none" stroke-linecap="round" opacity=".22"/>' +
-    /* 예부콩(나) — 항상 있다 */
-    '<g><ellipse cx="' + (ns.couple ? 138 : 160) + '" cy="112" rx="25" ry="31" fill="' + S + '" stroke="' + A + '" stroke-width="4"/>' +
-    '<path d="M' + (ns.couple ? 138 : 160) + ' 81 q2 -10 10 -12" stroke="' + A + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
-    '<circle cx="' + (ns.couple ? 130 : 152) + '" cy="107" r="3" fill="' + I + '"/>' +
-    '<circle cx="' + (ns.couple ? 146 : 168) + '" cy="107" r="3" fill="' + I + '"/>' +
-    '<path d="M' + (ns.couple ? 133 : 155) + ' 119 q5 4 10 0" stroke="' + I + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
-    '<circle cx="' + (ns.couple ? 126 : 148) + '" cy="114" r="4" fill="' + A + '" opacity=".18"/>' +
-    '<circle cx="' + (ns.couple ? 150 : 172) + '" cy="114" r="4" fill="' + A + '" opacity=".18"/></g>' +
-    /* 예부콩(배우자) — 커플 연결에서 파생 */
-    (ns.couple ?
-      '<g><ellipse cx="188" cy="116" rx="22" ry="27" fill="' + S + '" stroke="' + A + '" stroke-width="4"/>' +
-      '<circle cx="181" cy="111" r="2.8" fill="' + I + '"/><circle cx="195" cy="111" r="2.8" fill="' + I + '"/>' +
-      '<path d="M184 122 q4.5 3.6 9 0" stroke="' + I + '" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
-      '<path d="M158 96 q5 -7 10 0 q-5 7 -10 0" fill="' + A + '" opacity=".55"/></g>' : '') +
-    /* 우편함 — 혜택 확인에서 파생 */
-    (ns.benefit ?
-      '<g stroke="' + A + '" stroke-width="3.2" fill="' + S + '">' +
-      '<line x1="48" y1="150" x2="48" y2="116"/>' +
-      '<rect x="30" y="92" width="38" height="26" rx="9"/>' +
-      '<path d="M34 99 l15 10 l15 -10" fill="none" stroke-width="2.6"/></g>' : '') +
-    /* 체크 깃발 — 첫 신청에서 파생 */
-    (ns.apply ?
-      '<g stroke="' + A + '" stroke-width="3.2" fill="none">' +
-      '<line x1="276" y1="148" x2="276" y2="92"/>' +
-      '<path d="M276 94 h30 l-8 10 l8 10 h-30 z" fill="' + S + '"/>' +
-      '<path d="M284 104 l4 4 l8 -9" stroke-width="2.8"/></g>' : '') +
-    /* 가방 — 출산가방 완료에서 파생 */
-    (ns.bag ?
-      '<g stroke="' + A + '" stroke-width="3.2" fill="' + S + '">' +
-      '<rect x="236" y="132" width="30" height="21" rx="6"/>' +
-      '<path d="M243 132 q8 -11 16 0" fill="none"/></g>' : '') +
-    '</svg>';
+}
+
+function nestCardHtml() {
+  var ns = currentNest();
+  var n = ns.pct / 25;
   var chips = [
     ['couple', '커플 연결'], ['benefit', '혜택 확인'], ['apply', '첫 신청'], ['bag', '출산가방']
   ].map(function (c) {
@@ -3585,12 +3682,13 @@ function nestCardHtml() {
     return '<div class="nest-chip' + (on ? ' on' : '') + '">' + c[1] + '<b>' + (on ? '완료 ✓' : '아직') + '</b></div>';
   }).join('');
   return '<div class="nest">' +
-    '<h3>예부 둥지</h3>' +
-    '<div class="nest-sub">우리 가족이 함께 준비한 만큼, 둥지가 조금씩 채워져요</div>' +
-    svg +
-    '<div class="nest-bar" role="img" aria-label="둥지 ' + ns.pct + '% 채움"><div class="nest-fill" style="width:' + ns.pct + '%"></div></div>' +
+    '<h3>우리 가족의 둥지</h3>' +
+    '<div class="nest-sub">하나씩 준비하며, 아기와 가까워지고 있어요</div>' +
+    nestSceneSvg(ns, nestTokenColors()) +
+    '<div class="nest-bar-row"><div class="nest-bar"><div class="nest-fill" style="width:' + ns.pct + '%"></div></div>' +
+    '<span class="nest-bar-label">' + n + '/4 · ' + ns.pct + '%</span></div>' +
     '<div class="nest-chips">' + chips + '</div>' +
-    '<div class="nest-note">새로 저장하지 않아요 — 이미 있는 기록에서만 계산됩니다</div>' +
+    '<div class="nest-note">둥지 상태는 저장되지 않아요 — 이미 있는 데이터로만 계산됩니다</div>' +
     '</div>';
 }
 
