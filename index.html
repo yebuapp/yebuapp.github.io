@@ -3423,6 +3423,23 @@ function shareSummary() {
    캔버스 → PNG → Web Share(파일), 미지원이면 다운로드. 서버 업로드 0. */
 var cardState = { open: false, url: null, blob: null, kind: null };
 
+/* 예부콩 심볼 — 카드의 얼굴(운영자 확정 무드). 정보를 가리지 않게 작게만. */
+function drawBean(g, cx, cy, s) {
+  g.save();
+  g.lineWidth = 5 * s; g.strokeStyle = '#3538CD'; g.fillStyle = '#FFFFFF';
+  g.beginPath(); g.ellipse(cx, cy, 34 * s, 42 * s, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(cx, cy - 42 * s); g.quadraticCurveTo(cx + 3 * s, cy - 56 * s, cx + 14 * s, cy - 58 * s); g.stroke();
+  g.fillStyle = '#141313';
+  g.beginPath(); g.arc(cx - 11 * s, cy - 6 * s, 4.2 * s, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(cx + 11 * s, cy - 6 * s, 4.2 * s, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#141313'; g.lineWidth = 3.4 * s;
+  g.beginPath(); g.moveTo(cx - 6 * s, cy + 8 * s); g.quadraticCurveTo(cx, cy + 13 * s, cx + 6 * s, cy + 8 * s); g.stroke();
+  g.fillStyle = 'rgba(53,56,205,.14)';
+  g.beginPath(); g.arc(cx - 16 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(cx + 16 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); g.fill();
+  g.restore();
+}
+
 function drawCard(d) {
   var cv = document.createElement('canvas');
   cv.width = 1080; cv.height = 1350;
@@ -3431,6 +3448,7 @@ function drawCard(d) {
   var ink = '#141313', muted = '#6B6863', accent = '#3538CD', line = '#E3E1DB';
   var F = function (w, s) { return w + ' ' + s + 'px "IBM Plex Sans KR", sans-serif'; };
   g.fillStyle = '#FBFAF9'; g.fillRect(0, 0, 1080, 1350);
+  drawBean(g, 926, 292, 1);
   g.fillStyle = accent; g.font = F(700, 56); g.fillText('예부', 96, 156);
   g.fillStyle = muted; g.font = F(400, 34); g.textAlign = 'right'; g.fillText(d.dateStr, 984, 152); g.textAlign = 'left';
   g.fillStyle = muted; g.font = F(500, 46); g.fillText(d.title, 96, 316);
