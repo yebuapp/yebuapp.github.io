@@ -3115,6 +3115,8 @@ function moneyRow(r, showAmount) {
       h += '<div class="srcline">' + esc(g.source.name || '') +
         (g.source.checkedAt ? ' · ' + esc(g.source.checkedAt) + ' 확인' : '') + '</div>';
     }
+    // 데이터 오류 제보 — 이 DB 의 생명은 정확성이다. 다르면 바로 알릴 길을 연다.
+    h += '<div class="golinks"><a class="golink" href="' + esc(reportHref(g)) + '">공식 정보와 다른가요? 알려주세요</a></div>';
     if (r.status === 'unknown') h += askBlock(r);
     h += '</div>';
   }
@@ -3131,6 +3133,27 @@ function moneySection(key, title, rows, showAmount, note) {
     h += rows.map(function (r) { return moneyRow(r, showAmount); }).join('');
   }
   return h + '</div>';
+}
+
+/* ── 문의·제보 — 운영자 지정 주소(2026-08-27). 제도 표시가 공식 정보와 다르다는
+   제보를 받는다. 본문에 제도 id·지역·확인일·원문 주소를 미리 채워, 제보자가
+   설명을 덜 쓰고도 운영자가 바로 재확인할 수 있게 한다. 사용자 개인정보는
+   아무것도 담지 않는다 — 제도 메타데이터뿐이다. */
+var CONTACT_EMAIL = 'aidenwoo5968@gmail.com';
+function reportHref(g) {
+  var region = !g.region ? '전국'
+    : g.region.sigungu ? g.region.sido + ' ' + g.region.sigungu
+    : (g.region.sigungus && g.region.sigungus.length) ? g.region.sido + ' 일부 시·군·구'
+    : g.region.sido;
+  var meta = [
+    '제도: ' + g.name + ' (' + g.id + ')',
+    '지역: ' + region,
+    (g.source && g.source.checkedAt) ? '예부 확인일: ' + g.source.checkedAt : null,
+    (g.source && g.source.url) ? '원문: ' + g.source.url : null
+  ].filter(Boolean);
+  return 'mailto:' + CONTACT_EMAIL +
+    '?subject=' + encodeURIComponent('[예부 제보] ' + g.name) +
+    '&body=' + encodeURIComponent(meta.join('\n') + '\n\n다르게 확인된 내용을 적어 주세요:\n');
 }
 
 /* ── 요약 공유 — 사용자가 직접 눌렀을 때만, 화면에 이미 보이는 요약만 담는다.
