@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="예부">
+<script src="vendor/supabase-2.112.4.min.js"></script>
 <title>예부</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -1725,7 +1726,11 @@ var FIRST_RUN = false;
   if (!profile.dueDate) profile.dueDate = ENG.fmtDate(ENG.addDays(TODAY, 105));
   if (!profile.birthDate) profile.birthDate = ENG.fmtDate(ENG.addDays(TODAY, -20));
 })();
-function saveProfile() { store('yebu.profile', JSON.stringify(profile)); }
+function saveProfile() {
+  store('yebu.profile', JSON.stringify(profile));
+  // 커플이 연결돼 있으면 공유분을 서버에도 민다 — 입력마다 치지 않게 1.5초 묶음.
+  if (SUPA && sync.coupleId) { clearTimeout(_sharedT); _sharedT = setTimeout(pushShared, 1500); }
+}
 
 /* 완료 표시 — 누가 언제 했는지 남긴다. 둘이 같은 목록을 보기 때문이다. */
 var done = {};
@@ -1745,6 +1750,7 @@ function toggleDone(id) {
   if (done[id]) delete done[id];
   else done[id] = { by: profile.role, at: ENG.fmtDate(TODAY) };
   store('yebu.done', JSON.stringify(done));
+  pushMark(id, !!done[id]);   // 커플 연결 시 서버에도 반영(미연결이면 안에서 무시)
   render();
 }
 
@@ -1796,6 +1802,161 @@ function applyInvite(o) {
   if (o.from === 'mother' || o.from === 'partner') profile.role = OTHER[o.from];
   profile.linkedAt = ENG.fmtDate(TODAY);
   saveProfile();
+}
+
+/* ── 서버 동기화: 카카오 로그인 + 부부 실연동 ──────────────────────────
+   이 블록은 supabase-js 라이브러리가 실려 있을 때만 켜진다. 라이브러리는
+   호스팅 빌드(index.html)에만 들어가므로 아티팩트 발행본·로컬 원본에서는
+   버튼 자체가 나오지 않는다(조용한 비활성). 원칙:
+   · 로컬 저장이 원본이고 서버에는 커플 공유분만 올린다.
+   · 완료 표시 쓰기는 서버 RLS 가 본인 계정으로만 허용한다 — 대리 체크 불가.
+   · 무료 범위: 열 때·새로고침 버튼으로 동기화(실시간 아님). */
+var SUPA_URL = 'https://adagxaeirzkujskqjnnm.supabase.co';
+var SUPA_KEY = 'sb_publishable_YO9079BHO-1bLx7iKrdG0A_nwIL0Mxn'; /* 공개용 키 — 브라우저 노출 전제 */
+var SUPA = null;
+var sync = { user: null, nickname: null, coupleId: null, partnerName: null,
+             partnerMarks: {}, mode: null, code: null, err: null, msg: null };
+
+function syncNickname(u) {
+  var m = (u && u.user_metadata) || {};
+  return m.full_name || m.name || m.preferred_username || m.user_name || '카카오 계정';
+}
+
+function initSync() {
+  if (!window.supabase || location.protocol === 'file:') return;
+  try { SUPA = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch (e) { SUPA = null; return; }
+  SUPA.auth.onAuthStateChange(function (ev, session) {
+    var u = session ? session.user : null;
+    var was = sync.user ? sync.user.id : null;
+    sync.user = u; sync.nickname = u ? syncNickname(u) : null;
+    if (!u) { sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; }
+    if (u && u.id !== was) { ensureProfileRow(); loadCouple(); }
+    render();
+  });
+}
+
+/* 로그인 직후 내 회원 행을 보장한다(닉네임 최신화 겸용). */
+function ensureProfileRow() {
+  if (!SUPA || !sync.user) return Promise.resolve();
+  return SUPA.from('profiles').upsert({
+    user_id: sync.user.id, nickname: sync.nickname, role: profile.role
+  }).then(function () {}, function () {});
+}
+
+function loadCouple() {
+  if (!SUPA || !sync.user) return Promise.resolve();
+  return SUPA.from('profiles').select('couple_id').eq('user_id', sync.user.id).maybeSingle()
+    .then(function (r) {
+      sync.coupleId = (r.data && r.data.couple_id) || null;
+      if (!sync.coupleId) { sync.partnerName = null; sync.partnerMarks = {}; render(); return; }
+      return refreshCouple();
+    }, function () {});
+}
+
+/* 상대 닉네임과 완료 표시를 서버에서 다시 받아온다(무료 = 수동 동기화). */
+function refreshCouple() {
+  if (!SUPA || !sync.user || !sync.coupleId) return Promise.resolve();
+  var pPartner = SUPA.from('profiles').select('user_id,nickname')
+    .eq('couple_id', sync.coupleId).neq('user_id', sync.user.id);
+  var pMarks = SUPA.from('done_marks').select('item_id,by_user,done_at')
+    .eq('couple_id', sync.coupleId);
+  return Promise.all([pPartner, pMarks]).then(function (rs) {
+    var partner = (rs[0].data && rs[0].data[0]) || null;
+    sync.partnerName = partner ? partner.nickname : null;
+    var marks = {};
+    (rs[1].data || []).forEach(function (m) {
+      if (m.by_user !== sync.user.id) marks[m.item_id] = m.done_at || true;
+    });
+    sync.partnerMarks = marks;
+    render();
+  }, function () { render(); });
+}
+
+/* 내 완료 표시 하나를 서버에 반영한다. 실패해도 로컬은 그대로다. */
+function pushMark(id, on) {
+  if (!SUPA || !sync.user || !sync.coupleId) return;
+  if (on) {
+    SUPA.from('done_marks').upsert({ couple_id: sync.coupleId, item_id: id, by_user: sync.user.id })
+      .then(function () {}, function () {});
+  } else {
+    SUPA.from('done_marks').delete().eq('couple_id', sync.coupleId)
+      .eq('item_id', id).eq('by_user', sync.user.id).then(function () {}, function () {});
+  }
+}
+
+/* 커플이 막 이어졌을 때 — 지금까지의 내 완료 기록을 한 번에 올린다. */
+function pushAllMarks() {
+  if (!SUPA || !sync.user || !sync.coupleId) return Promise.resolve();
+  var rows = Object.keys(done).map(function (id) {
+    return { couple_id: sync.coupleId, item_id: id, by_user: sync.user.id };
+  });
+  if (!rows.length) return Promise.resolve();
+  return SUPA.from('done_marks').upsert(rows).then(function () {}, function () {});
+}
+
+function sharedPayload() {
+  var p = { v: 1, from: profile.role };
+  SHARED_FIELDS.forEach(function (k) { if (profile[k] != null && profile[k] !== '') p[k] = profile[k]; });
+  return p;
+}
+
+/* 커플 공유 프로필을 서버에 민다 — 연결된 경우에만, 저장 후 1.5초 묶어서. */
+var _sharedT = null;
+function pushShared() {
+  if (!SUPA || !sync.user || !sync.coupleId) return;
+  SUPA.from('profile_shared').upsert({
+    couple_id: sync.coupleId, data: sharedPayload(),
+    updated_at: new Date().toISOString(), updated_by: sync.user.id
+  }).then(function () {}, function () {});
+}
+
+function svLogin() {
+  if (!SUPA) return;
+  SUPA.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname } })
+    .then(function (r) { if (r && r.error) { sync.err = '로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); } });
+}
+function svLogout() {
+  if (!SUPA) return;
+  SUPA.auth.signOut().then(function () {}, function () {});
+  sync.mode = null; sync.code = null; sync.err = null; sync.msg = null;
+}
+function svInvite() {
+  if (!SUPA) return;
+  sync.msg = '코드를 만드는 중…'; sync.err = null; render();
+  SUPA.rpc('create_invite').then(function (r) {
+    sync.msg = null;
+    if (r.error) { sync.err = '코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); return; }
+    sync.code = r.data; sync.mode = 'show';
+    /* 코드를 만든 순간 커플 행이 생긴다 — 공유 프로필과 내 완료 기록도 밀어 둔다. */
+    loadCouple().then(function () { pushShared(); return pushAllMarks(); });
+    render();
+  });
+}
+function svJoin(code) {
+  if (!SUPA) return;
+  if (!code) { sync.err = '코드를 입력해 주세요.'; render(); return; }
+  sync.msg = '연결하는 중…'; sync.err = null; render();
+  SUPA.rpc('join_couple', { code: code }).then(function (r) {
+    sync.msg = null;
+    if (r.error) {
+      var m = String(r.error.message || '');
+      sync.err = m.indexOf('INVALID_CODE') >= 0 ? '코드가 틀리거나 유효기간(24시간)이 지났습니다.'
+        : m.indexOf('COUPLE_FULL') >= 0 ? '이 코드는 이미 두 사람이 연결을 마쳤습니다.'
+        : m.indexOf('ALREADY_COUPLED') >= 0 ? '이미 연결된 상대가 있습니다.'
+        : m.indexOf('OWN_CODE') >= 0 ? '자신이 만든 코드는 넣을 수 없습니다.'
+        : '연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      render(); return;
+    }
+    sync.coupleId = r.data; sync.mode = null;
+    /* 상대가 밀어 둔 공유 프로필을 받아 적용한다 — 코드 방식과 같은 규칙. */
+    SUPA.from('profile_shared').select('data').eq('couple_id', sync.coupleId).maybeSingle()
+      .then(function (s) {
+        if (s && s.data && s.data.data && s.data.data.v === 1) applyInvite(s.data.data);
+        return ensureProfileRow();
+      }, function () {})
+      .then(function () { return pushAllMarks(); })
+      .then(function () { recompute(); return refreshCouple(); });
+  });
 }
 
 /* ── 계산 ──────────────────────────────────────────────────────────────── */
@@ -2010,24 +2171,28 @@ function chkDetailBody(it) {
 
 function chkRow(c) {
   var it = c.item, rowDone = !!done[it.id], w = chkWhen(c), mine = isMine(it.who);
+  // 커플 연동 시 서버에서 온 상대의 완료 표시 — 이 기기의 기록과 별개다.
+  var remoteDone = !!sync.partnerMarks[it.id];
   var tags = '';
   // 법정 기한 표시는 지금·곧 해야 하는 항목에만 붙인다. 목록 전체에 빨간 태그가
   // 달리면 여섯 번째부터는 아무도 그것을 강조로 읽지 않는다.
   if (it.isLegalDeadline && (c.state === 'now' || c.state === 'soon')) tags += '<span class="tag legal">법정 기한</span>';
   if (it.who === 'both') tags += '<span class="tag who both">함께</span>';
   if (rowDone && doneBy(it.id)) tags += '<span class="tag done-by">' + ROLE_LABEL[doneBy(it.id)] + '가 완료</span>';
+  if (remoteDone && !rowDone) tags += '<span class="tag done-by">배우자가 완료</span>';
+  else if (remoteDone && rowDone && it.who === 'both') tags += '<span class="tag done-by">배우자도 완료</span>';
   if (it.steps && it.steps.length && !rowDone) {
     var sd = it.steps.filter(function (st) { return isDone(it.id + '/' + st.id); }).length;
     if (sd) tags += '<span class="tag">' + sd + '/' + it.steps.length + ' 준비함</span>';
   }
   if (c.estimated) tags += '<span class="tag line">' + esc(it.when && it.when.text ? it.when.text : '출산 후') + '</span>';
 
-  var h = '<div class="item"><div class="row' + (rowDone ? ' done' : '') + '">' +
+  var h = '<div class="item"><div class="row' + (rowDone || (remoteDone && !mine) ? ' done' : '') + '">' +
     (mine
       ? '<button class="chk' + (rowDone ? ' on' : '') + '" data-done="' + esc(it.id) + '" aria-pressed="' + (rowDone ? 'true' : 'false') +
         '" aria-label="' + esc(it.name) + ' 완료 표시"><i>' + ICON.check + '</i></button>'
-      : '<div class="chk locked' + (rowDone ? ' on' : '') + '" title="' + ROLE_LABEL[it.who] + ' 몫입니다" aria-hidden="true"><i>' +
-        (rowDone ? ICON.check : ICON.lock) + '</i></div>') +
+      : '<div class="chk locked' + (rowDone || remoteDone ? ' on' : '') + '" title="' + ROLE_LABEL[it.who] + ' 몫입니다" aria-hidden="true"><i>' +
+        (rowDone || remoteDone ? ICON.check : ICON.lock) + '</i></div>') +
     '<button class="row-main" data-open="' + esc(it.id) + '" style="background:none;border:0;text-align:left">' +
       '<div class="row-title">' + esc(it.name) + '</div>' +
       '<div class="row-sub">' + esc(it.whatToDo) + '</div>' +
@@ -2344,7 +2509,7 @@ function viewTodo() {
     return !isMine(c.item.who) && c.state !== 'past' && c.state !== 'unknown';
   });
   if (theirs.length) {
-    var theirsDone = theirs.filter(function (c) { return isDone(c.item.id); }).length;
+    var theirsDone = theirs.filter(function (c) { return isDone(c.item.id) || !!sync.partnerMarks[c.item.id]; }).length;
     h += '<div class="sec theirs"><button class="sec-head" data-fold="theirs">' +
       '<h3>' + ROLE_LABEL[OTHER[profile.role]] + '가 할 일</h3>' +
       '<span class="count">' + theirsDone + ' / ' + theirs.length + '</span>' +
@@ -2839,6 +3004,37 @@ function sheetHtml() {
   /* 부부 연결 */
   var linked = profile.linkedAt ? true : false;
   f += '<div class="field"><label>배우자와 함께 쓰기</label>';
+  if (SUPA) {
+    if (sync.msg) f += '<div class="fieldnote">' + esc(sync.msg) + '</div>';
+    if (!sync.user) {
+      f += '<div class="seg"><button data-sync="login">카카오로 함께 쓰기 시작</button></div>' +
+        '<div class="fieldnote">카카오로 로그인한 부부는 <b>완료 표시가 서로 보입니다.</b> ' +
+        '로그인 없이 쓰려면 아래 코드 방식을 쓰세요 — 이때는 프로필만 한 번 넘겨줍니다.</div>';
+    } else if (!sync.coupleId) {
+      if (sync.mode === 'show' && sync.code) {
+        f += '<div class="codebox"><code id="svCode">' + esc(sync.code) + '</code></div>' +
+          '<div class="fieldnote">배우자에게 이 코드를 보내세요. <b>24시간 안에 한 번</b>만 쓸 수 있습니다. ' +
+          '상대도 카카오 로그인 후 &lsquo;코드 입력&rsquo;에 넣으면 연결됩니다.</div>' +
+          '<div class="seg" style="margin-top:4px"><button data-sync="copy">코드 복사</button><button data-sync="off">닫기</button></div>';
+      } else if (sync.mode === 'enter') {
+        f += '<input type="text" id="svCodeInput" placeholder="받은 6자리 코드" autocomplete="off" autocapitalize="characters" spellcheck="false">' +
+          (sync.err ? '<div class="fieldnote" style="color:var(--alert);font-weight:700">' + esc(sync.err) + '</div>' : '') +
+          '<div class="seg" style="margin-top:4px"><button data-sync="join">연결하기</button><button data-sync="off">취소</button></div>';
+      } else {
+        f += '<div class="seg"><button data-sync="invite">초대 코드 만들기</button><button data-sync="enter">코드 입력</button><button data-sync="logout">로그아웃</button></div>' +
+          (sync.err ? '<div class="fieldnote" style="color:var(--alert);font-weight:700">' + esc(sync.err) + '</div>' : '') +
+          '<div class="fieldnote"><b>' + esc(sync.nickname || '카카오 계정') + '</b>으로 로그인했습니다. ' +
+          '코드를 만들어 배우자에게 보내거나, 받은 코드를 넣어 연결하세요.</div>';
+      }
+    } else {
+      f += '<div class="fieldnote"><b>배우자와 연결되어 있습니다.</b> ' +
+        (sync.partnerName
+          ? esc(sync.partnerName) + ' 님과 완료 표시를 서로 봅니다. 상대 몫을 대신 체크할 수는 없습니다.'
+          : '상대가 아직 코드를 넣지 않았습니다. 코드가 전달됐는지 확인해 보세요.') + '</div>' +
+        '<div class="seg"><button data-sync="refresh">동기화 새로고침</button><button data-sync="logout">로그아웃</button></div>';
+    }
+  }
+  if (!SUPA || !sync.user) {
   if (inviteMode === 'show') {
     var code = makeInviteCode();
     f += '<div class="codebox"><code id="inviteCode">' + esc(code) + '</code></div>' +
@@ -2856,6 +3052,7 @@ function sheetHtml() {
         ? '<b>' + esc(profile.linkedAt) + '</b> 에 배우자 정보를 받아 왔습니다. 지금은 ' + ROLE_LABEL[profile.role] + ' 화면입니다.'
         : '두 사람이 같은 조건에서 시작하도록 정보를 넘겨줍니다.') +
       '</div>';
+  }
   }
   f += '</div>';
 
@@ -3153,7 +3350,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-toggle', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-toggle', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -3173,6 +3370,35 @@ document.addEventListener('click', function (e) {
     // 첫 실행 온보딩을 닫으면 현재 값을 확정으로 저장한다 — 매번 다시 뜨지 않게.
     saveProfile();
     sheetOpen = false; render(); return;
+  }
+  if (t.hasAttribute('data-sync')) {
+    var sa = t.getAttribute('data-sync');
+    if (sa === 'login') { svLogin(); return; }
+    if (sa === 'logout') { svLogout(); render(); return; }
+    if (sa === 'invite') { svInvite(); return; }
+    if (sa === 'join') {
+      var svi = document.getElementById('svCodeInput');
+      svJoin(svi ? svi.value.trim().toUpperCase() : '');
+      return;
+    }
+    if (sa === 'refresh') {
+      sync.msg = '동기화 중…'; render();
+      // loadCouple 은 커플 성립 여부부터 다시 본다 — 상대가 방금 들어온 경우를 잡는다.
+      loadCouple().then(function () { sync.msg = null; render(); });
+      return;
+    }
+    if (sa === 'copy') {
+      var ce = document.getElementById('svCode');
+      var ct = ce ? ce.textContent : '';
+      var cok = function () { t.textContent = '복사했습니다'; setTimeout(function () { if (t && t.isConnected) t.textContent = '코드 복사'; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ct).then(cok, function () { selectText(ce); });
+      else selectText(ce);
+      return;
+    }
+    sync.mode = sa === 'off' ? null : sa;   /* 'enter' */
+    sync.err = null;
+    render();
+    return;
   }
   if (t.hasAttribute('data-invite')) {
     var mode = t.getAttribute('data-invite');
@@ -3305,6 +3531,7 @@ document.addEventListener('change', function (e) {
   saveProfile(); render();
 });
 
+initSync();   // 호스팅 빌드에서만 켜진다 — 라이브러리가 없으면 조용히 통과
 render();
 </script>
 
