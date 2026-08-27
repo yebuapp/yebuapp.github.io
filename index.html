@@ -3616,6 +3616,8 @@ function searchDetail(e) {
       { url: r.applyUrl || r.onlineApplyUrl, label: '신청하러 가기' },
       { url: r.source && r.source.url, label: '제도 안내 원문' }
     ]);
+    // 혜택 탭 상세와 같은 제보 링크 — 검색으로 들어와도 오류를 알릴 길은 같다.
+    h += '<div class="golinks"><a class="golink" href="' + esc(reportHref(r)) + '">공식 정보와 다른가요? 알려주세요</a></div>';
 
   } else if (e.kind === '바뀌는 것') {
     h += dlRow('누가', r.who);
