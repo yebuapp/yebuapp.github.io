@@ -1728,8 +1728,11 @@ var FIRST_RUN = false;
 })();
 function saveProfile() {
   store('yebu.profile', JSON.stringify(profile));
-  // 커플이 연결돼 있으면 공유분을 서버에도 민다 — 입력마다 치지 않게 1.5초 묶음.
-  if (SUPA && sync.coupleId) { clearTimeout(_sharedT); _sharedT = setTimeout(pushShared, 1500); }
+  // 커플 공유분·알림 일정은 서버에도 민다 — 입력마다 치지 않게 1.5초 묶음.
+  if (SUPA && (sync.coupleId || pushState === 'on')) {
+    clearTimeout(_sharedT);
+    _sharedT = setTimeout(function () { pushShared(); pushAlertsUpdate(); }, 1500);
+  }
 }
 
 /* 완료 표시 — 누가 언제 했는지 남긴다. 둘이 같은 목록을 보기 때문이다. */
@@ -1837,6 +1840,7 @@ function initSync() {
     }
     render();
   });
+  refreshPushState().then(function () { render(); });
 }
 
 /* 로그인 직후 내 회원 행을 보장한다(닉네임 최신화 겸용). */
@@ -1962,6 +1966,176 @@ function svJoin(code) {
       }, function () {})
       .then(function () { return pushAllMarks(); })
       .then(function () { recompute(); return refreshCouple(); });
+  });
+}
+
+/* ── 알림(웹푸시) ──────────────────────────────────────────────────────
+   근거 있는 3종만 보낸다: 법정 기한 D-7/D-1 · 주차 전환 · 개정 시행 당일.
+   알림 내용은 앱이 여기서 미리 계산해 구독 행(alerts)에 저장하고, 서버는
+   매일 아침 "오늘 날짜인 것"만 발송한다 — 기한 계산의 단일 진실은 앱 엔진 하나다.
+   iOS 는 홈 화면에 추가한 웹앱에서만 동작한다(웹킷 공식 제약). */
+var VAPID_PUBLIC = 'BPkRmrcP7RgAeeJOLd_p6nF_MVBQ2yrbi9HKnP9DC8Vqhn_F5RaIFkPjXSj3BWCxqTRQ104FlD1PZmve_XkPM3I';
+var pushState = 'unknown'; /* unsupported | ios-install | denied | off | on | unknown */
+var pushEndpoint = null;
+
+function iosNeedsInstall() {
+  var ua = navigator.userAgent || '';
+  var isIos = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var standalone = navigator.standalone === true ||
+    (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  return isIos && !standalone;
+}
+function pushSupported() {
+  return !!(SUPA && location.protocol === 'https:' && 'serviceWorker' in navigator &&
+    'PushManager' in window && 'Notification' in window);
+}
+function refreshPushState() {
+  if (!pushSupported()) {
+    pushState = iosNeedsInstall() ? 'ios-install' : 'unsupported';
+    return Promise.resolve();
+  }
+  if (Notification.permission === 'denied') { pushState = 'denied'; return Promise.resolve(); }
+  return navigator.serviceWorker.ready
+    .then(function (reg) { return reg.pushManager.getSubscription(); })
+    .then(function (s) { pushState = s ? 'on' : 'off'; pushEndpoint = s ? s.endpoint : null; },
+          function () { pushState = 'off'; });
+}
+
+function fmtKDate(d) { return (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; }
+
+/** 이 프로필로 앞으로 보낼 알림 목록. 추정 기한(estimated)은 절대 보내지 않는다. */
+function buildAlerts() {
+  var out = [];
+  var seen = {};
+  var todayStr = ENG.fmtDate(TODAY);
+  function addA(on, title, body, tag) {
+    if (!on || on <= todayStr || seen[tag]) return;
+    seen[tag] = 1;
+    out.push({ on: on, title: title, body: body, tag: tag });
+  }
+  /* ① 법정 기한 — 확정 날짜가 있는 것만 */
+  (CHK || []).forEach(function (c) {
+    if (!c.item || !c.item.isLegalDeadline || c.estimated || !c.date || c.daysLeft == null || c.daysLeft < 0) return;
+    var md = fmtKDate(c.date);
+    addA(ENG.fmtDate(new Date(c.date.getTime() - 7 * 86400000)),
+      c.item.name + ' — 기한 7일 전', '기한이 ' + md + '까지입니다.', 'dl7-' + c.item.id);
+    addA(ENG.fmtDate(new Date(c.date.getTime() - 86400000)),
+      c.item.name + ' — 기한 하루 전', '내일(' + md + ')이 기한입니다.', 'dl1-' + c.item.id);
+  });
+  /* ② 주차 전환 — 다가오는 4번의 주 경계(예정일 역산) */
+  if (profile.stage === 'pregnant' && profile.dueDate && D && D.weeks != null) {
+    var due = new Date(profile.dueDate + 'T00:00:00');
+    for (var w = D.weeks + 1; w <= Math.min(D.weeks + 4, 42); w++) {
+      var start = ENG.fmtDate(new Date(due.getTime() - (280 - w * 7) * 86400000));
+      var tests = (TIMELINE || []).filter(function (t) {
+        return t.weekFrom != null && t.weekFrom <= w && w <= (t.weekTo != null ? t.weekTo : t.weekFrom);
+      }).length;
+      addA(start, w + '주차가 시작됐어요',
+        tests ? '이번 주에 해당하는 검사·진료가 ' + tests + '건 있습니다. 오늘 탭에서 확인해 보세요.'
+              : '이번 주의 몸의 변화와 생활수칙을 오늘 탭에서 확인해 보세요.', 'wk-' + w);
+    }
+  }
+  /* ③ 개정 시행 — 나에게 해당하는 것의 시행 당일 아침 */
+  (CHG || []).forEach(function (c) {
+    if (!c.change || !c.change.effectiveFrom || c.relevant !== true) return;
+    addA(c.change.effectiveFrom, '오늘부터: ' + c.change.title, c.change.summary || '', 'law-' + c.change.id);
+  });
+  return out.slice(0, 40);
+}
+
+function urlB64ToU8(s) {
+  var pad = '===='.slice(0, (4 - (s.length % 4)) % 4);
+  var b = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  var a = new Uint8Array(b.length);
+  for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+  return a;
+}
+
+function pushSubscribe() {
+  if (!pushSupported() || !sync.user) return;
+  sync.msg = '알림을 켜는 중…'; sync.err = null; render();
+  navigator.serviceWorker.ready.then(function (reg) {
+    return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToU8(VAPID_PUBLIC) });
+  }).then(function (s) {
+    var j = s.toJSON();
+    pushEndpoint = s.endpoint;
+    return SUPA.from('push_subscriptions').upsert({
+      endpoint: s.endpoint, user_id: sync.user.id,
+      p256dh: j.keys.p256dh, auth: j.keys.auth,
+      alerts: buildAlerts(), updated_at: new Date().toISOString()
+    });
+  }).then(function (r) {
+    sync.msg = null;
+    if (r && r.error) { sync.err = '알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'; pushState = 'off'; }
+    else pushState = 'on';
+    render();
+  }, function (e) {
+    sync.msg = null;
+    if (Notification.permission === 'denied') { pushState = 'denied'; }
+    else { pushState = 'off'; sync.err = '알림을 켜지 못했습니다. 잠시 후 다시 시도해 주세요.'; }
+    render();
+  });
+}
+function pushUnsubscribe() {
+  sync.msg = '알림을 끄는 중…'; render();
+  navigator.serviceWorker.ready
+    .then(function (reg) { return reg.pushManager.getSubscription(); })
+    .then(function (s) {
+      var done = Promise.resolve();
+      if (s) {
+        done = SUPA.from('push_subscriptions').delete().eq('endpoint', s.endpoint)
+          .then(function () { return s.unsubscribe(); });
+      }
+      return done;
+    })
+    .then(function () { sync.msg = null; pushState = 'off'; pushEndpoint = null; render(); },
+          function () { sync.msg = null; render(); });
+}
+function pushTest() {
+  sync.msg = '테스트를 보내는 중…'; render();
+  SUPA.functions.invoke('push', { body: { type: 'test' } }).then(function (r) {
+    sync.msg = null;
+    if (r.error) sync.err = '테스트 발송에 실패했습니다.';
+    else sync.err = null;
+    render();
+  }, function () { sync.msg = null; sync.err = '테스트 발송에 실패했습니다.'; render(); });
+}
+/** 프로필이 바뀌면 예약된 알림도 다시 계산해 올린다(구독 중일 때만). */
+function pushAlertsUpdate() {
+  if (!SUPA || !sync.user || pushState !== 'on' || !pushEndpoint) return;
+  SUPA.from('push_subscriptions')
+    .update({ alerts: buildAlerts(), updated_at: new Date().toISOString() })
+    .eq('endpoint', pushEndpoint).then(function () {}, function () {});
+}
+
+/* ── 커플 해제 · 계정 삭제 ─────────────────────────────────────────────── */
+function svLeave() {
+  sync.msg = '해제하는 중…'; render();
+  SUPA.rpc('leave_couple').then(function (r) {
+    sync.msg = null; sync.confirm = null;
+    if (r.error) { sync.err = '해제하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); return; }
+    sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    render();
+  });
+}
+function svDelete() {
+  sync.msg = '계정을 삭제하는 중…'; render();
+  SUPA.rpc('delete_account').then(function (r) {
+    sync.msg = null; sync.confirm = null;
+    if (r.error) { sync.err = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); return; }
+    /* 서버 행은 계정과 함께 이미 지워졌다 — 브라우저 쪽 구독만 마저 끊는다. */
+    if (pushSupported()) {
+      navigator.serviceWorker.ready
+        .then(function (reg) { return reg.pushManager.getSubscription(); })
+        .then(function (s) { if (s) return s.unsubscribe(); })
+        .then(function () {}, function () {});
+    }
+    pushState = pushSupported() ? 'off' : pushState;
+    pushEndpoint = null;
+    SUPA.auth.signOut().then(function () {}, function () {});
+    sync.user = null; sync.nickname = null; sync.coupleId = null; sync.partnerName = null;
+    sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    render();
   });
 }
 
@@ -3071,6 +3245,44 @@ function sheetHtml() {
   }
   f += '</div>';
 
+  /* 알림 — 근거 있는 3종(법정 기한·주차 전환·개정 시행)만 */
+  if (SUPA) {
+    f += '<div class="field"><label>알림</label>';
+    if (!sync.user) {
+      f += '<div class="fieldnote">카카오로 로그인하면 법정 기한(7일·하루 전)과 주차 전환, 제도 시행일 알림을 받을 수 있습니다.</div>';
+    } else if (pushState === 'ios-install') {
+      f += '<div class="fieldnote">아이폰·아이패드는 <b>홈 화면에 추가한 뒤</b>에 알림을 받을 수 있습니다. 사파리 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;.</div>';
+    } else if (pushState === 'unsupported') {
+      f += '<div class="fieldnote">이 브라우저에서는 알림을 지원하지 않습니다.</div>';
+    } else if (pushState === 'denied') {
+      f += '<div class="fieldnote">브라우저 설정에서 이 사이트의 알림이 차단되어 있습니다. 차단을 풀면 다시 켤 수 있어요.</div>';
+    } else if (pushState === 'on') {
+      f += '<div class="fieldnote"><b>알림 켜짐.</b> 법정 기한 7일·하루 전, 주차가 바뀌는 날, 제도 시행일 아침 9시에 보냅니다. 그 외에는 보내지 않습니다.</div>' +
+        '<div class="seg"><button data-sync="push-test">테스트 발송</button><button data-sync="push-off">알림 끄기</button></div>';
+    } else {
+      f += '<div class="seg"><button data-sync="push-on">기한 알림 받기</button></div>' +
+        '<div class="fieldnote">법정 기한 7일·하루 전, 주차가 바뀌는 날, 제도 시행일 아침 9시에만 보냅니다.</div>';
+    }
+    f += '</div>';
+  }
+
+  /* 계정 — 연결 해제·탈퇴. 두 번 눌러야 실행된다. */
+  if (SUPA && sync.user) {
+    f += '<div class="field"><label>계정</label>';
+    if (sync.confirm === 'leave') {
+      f += '<div class="fieldnote" style="color:var(--alert);font-weight:700">연결을 해제하면 서버에 올린 내 완료 표시가 지워지고 상대 화면에서도 사라집니다. 기기 안의 기록은 남습니다.</div>' +
+        '<div class="seg"><button data-sync="leave-yes">해제 확정</button><button data-sync="confirm-off">취소</button></div>';
+    } else if (sync.confirm === 'delete') {
+      f += '<div class="fieldnote" style="color:var(--alert);font-weight:700">계정을 삭제하면 커플 연결·서버의 완료 표시·알림 구독이 모두 지워집니다. 기기 안의 기록은 남습니다.</div>' +
+        '<div class="seg"><button data-sync="delete-yes">삭제 확정</button><button data-sync="confirm-off">취소</button></div>';
+    } else {
+      f += '<div class="seg">' +
+        (sync.coupleId ? '<button data-sync="leave">커플 연결 해제</button>' : '') +
+        '<button data-sync="delete">계정 삭제</button></div>';
+    }
+    f += '</div>';
+  }
+
   return '<div class="sheet-bg" data-closesheet="1"><div class="sheet" role="dialog" aria-label="내 정보">' +
     '<div class="grab"></div>' +
     '<div class="sheet-head"><h2>내 정보</h2>' +
@@ -3410,6 +3622,14 @@ document.addEventListener('click', function (e) {
       else selectText(ce);
       return;
     }
+    if (sa === 'push-on') { pushSubscribe(); return; }
+    if (sa === 'push-off') { pushUnsubscribe(); return; }
+    if (sa === 'push-test') { pushTest(); return; }
+    if (sa === 'leave') { sync.confirm = 'leave'; render(); return; }
+    if (sa === 'delete') { sync.confirm = 'delete'; render(); return; }
+    if (sa === 'confirm-off') { sync.confirm = null; render(); return; }
+    if (sa === 'leave-yes') { svLeave(); return; }
+    if (sa === 'delete-yes') { svDelete(); return; }
     sync.mode = sa === 'off' ? null : sa;   /* 'enter' */
     sync.err = null;
     render();
