@@ -1692,9 +1692,12 @@ var profile = {
   // 나는 둘 중 누구인가. 화면이 '내가 할 일'과 '배우자가 할 일'로 갈린다.
   role: 'mother',
   stage: 'pregnant', dueDate: '', birthDate: '',
-  sido: '서울특별시', sigungu: '강남구',
-  regionType: null, regionTypeAuto: true, residencyMonths: 12,
-  fetusCount: 1, childrenBefore: 0,
+  // 지역·거주기간·가족 구성은 미입력(null)이 기본이다. 예전엔 강남구·12개월을
+  // 박아 뒀는데, 첫 실행 시트를 그냥 닫으면 그 값이 확인값처럼 저장돼
+  // 남의 지역 혜택이 '내 금액'으로 나갔다. 모르는 것은 모른다고 두고 묻는다.
+  sido: null, sigungu: null,
+  regionType: null, regionTypeAuto: true, residencyMonths: null,
+  fetusCount: null, childrenBefore: null,
   // 고용 형태 등은 미입력(null)이 기본이다. 'employee' 를 박아 두면 확인받지
   // 않은 값으로 확정 판정이 조용히 나간다 — 모르는 것은 물어야 한다.
   employment: null, spouseEmployment: null,
@@ -1723,8 +1726,19 @@ var FIRST_RUN = false;
     if (profile.isDisabledParent === true) profile.isDisabledMother = null;
     profile._v = 2;
   }
-  if (!profile.dueDate) profile.dueDate = ENG.fmtDate(ENG.addDays(TODAY, 105));
-  if (!profile.birthDate) profile.birthDate = ENG.fmtDate(ENG.addDays(TODAY, -20));
+  // v3 마이그레이션 — 초기 버전은 첫 실행 시트를 그냥 닫아도 기본값(강남구·거주
+  // 12개월)이 확인값처럼 저장됐다. 세 값이 그 조합 그대로면 사용자가 고른 적
+  // 없는 값일 가능성이 압도적이라 미입력으로 되돌린다. 되묻는 쪽은 안전하지만
+  // 남겨 두면 남의 지역으로 판정이 나간다. (예전 자동 채움 예정일은 실제 입력과
+  // 구분할 방법이 없어 남긴다 — 이 버전 이전 사용자는 사실상 없다.)
+  if (!profile._v || profile._v < 3) {
+    if (profile.sido === '서울특별시' && profile.sigungu === '강남구' && profile.residencyMonths === 12) {
+      profile.sido = null; profile.sigungu = null; profile.residencyMonths = null;
+    }
+    profile._v = 3;
+  }
+  // 예정일·아이 생일은 자동으로 채우지 않는다 — '오늘+105일'을 넣는 순간
+  // 15주차라는 지어낸 사실이 주차 안내·기한·푸시 알림까지 타고 나간다.
 })();
 function saveProfile() {
   store('yebu.profile', JSON.stringify(profile));
@@ -2505,6 +2519,15 @@ function viewToday() {
     var days = Math.round((TODAY - bd) / 86400000);
     h += '<div style="display:flex;align-items:baseline"><div class="big">' + days + '</div><div class="big-unit">일째</div></div>';
     h += '<div class="hero-side"><div><div class="kv-label">생후</div><div class="kv-value num">' + D.childAgeMonths + '<small>개월</small></div></div></div>';
+  } else if (profile.stage === 'pregnant') {
+    // 예정일이 없다고 주차를 지어내지 않는다 — 무엇이 잠겨 있는지 알리고 입력을 청한다.
+    h += '<div style="flex:1"><div class="kv-label">출산 예정일을 입력하면</div>' +
+      '<div class="hero-note" style="margin-top:4px">주차별 검사·할 일 안내와 신청 기한 계산이 시작됩니다.</div>' +
+      '<div style="margin-top:10px"><button class="askbtn" data-sheet="me">내 정보 입력하기</button></div></div>';
+  } else if (profile.stage === 'postpartum') {
+    h += '<div style="flex:1"><div class="kv-label">아이 생일을 입력하면</div>' +
+      '<div class="hero-note" style="margin-top:4px">접종·검진 일정과 신청 기한 계산이 시작됩니다.</div>' +
+      '<div style="margin-top:10px"><button class="askbtn" data-sheet="me">내 정보 입력하기</button></div></div>';
   } else {
     // 준비 중에는 주차도 날짜도 없다. 대신 임신 전에 챙길 것이 몇 가지
     // 남았는지를 세어 보여 준다 — 하나씩 지워 나가는 것이 이 단계의 일이다.
@@ -3160,6 +3183,7 @@ function sheetHtml() {
     f += '<div class="field"><label>출산 예정일</label><input type="date" data-set="dueDate" value="' + esc(profile.dueDate) + '"></div>';
   }
   f += '<div class="field"><label>시 · 도</label><select data-set="sido">' +
+    '<option value=""' + (profile.sido == null ? ' selected' : '') + '>선택해 주세요</option>' +
     SIDO.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sido === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
     '</select></div>';
   f += '<div class="field"><label>시 · 군 · 구</label><select data-set="sigungu">' +
@@ -3554,7 +3578,7 @@ function render() {
     : tab === 'journey' ? viewJourney() : viewMoney();
 
   var h = iosInstallBanner() + '<div class="top">' +
-    '<div class="place"><b>' + esc(profile.sigungu || profile.sido) + '</b><span>' + esc(profile.sigungu ? profile.sido : '') + '</span></div>' +
+    '<div class="place"><b>' + esc(profile.sigungu || profile.sido || '지역 미설정') + '</b><span>' + esc(profile.sigungu ? profile.sido : '') + '</span></div>' +
     '<div class="topbtns">' +
       '<button class="iconbtn" id="searchBtn" aria-label="찾기">' + ICON.search + '</button>' +
       '<button class="sos" id="sosBtn" aria-label="병원에 가야 하는 신호 보기">' + ICON.sos + '이럴 땐 병원</button>' +
@@ -3761,6 +3785,7 @@ document.addEventListener('change', function (e) {
   if (t.type === 'number') v = v === '' ? null : Number(v);
   if (f === 'incomeBracket' && v === '') v = null;
   if (f === 'sigungu' && v === '') v = null;
+  if (f === 'sido' && v === '') v = null;
   profile[f] = v;
   if (f === 'sido') profile.sigungu = null;
   saveProfile(); render();
