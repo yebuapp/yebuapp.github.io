@@ -12,6 +12,11 @@
 <title>예부</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="description" content="임신 준비부터 첫돌까지 — 지금 할 일과 신청 기한, 우리 지역 혜택을 공식 출처로 확인합니다.">
+<meta property="og:title" content="예부 — 예비부모의 할 일과 혜택">
+<meta property="og:description" content="임신 준비부터 첫돌까지, 지금 해야 할 일과 받을 수 있는 혜택을 공식 출처로 확인합니다.">
+<meta property="og:url" content="https://yebuapp.github.io/">
+<meta property="og:image" content="https://yebuapp.github.io/icons/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -932,6 +937,22 @@ function missingOf(req, p) {
   return ASK_SOURCE[req.field] ?? [req.field];
 }
 
+/**
+ * '조건 불일치'를 만든 필드를 찾는다 — missingOf 의 대칭.
+ * 여기서는 ASK_SOURCE 로 되돌리지 않는다: 값은 이미 있고(파생 포함) 판정이
+ * '아니오'로 난 것이므로, 어느 조건이 걸렸는지를 그 조건의 이름으로 말한다.
+ * ("자녀 수를 입력하세요"가 아니라 "출산 순위 조건이 맞지 않습니다"가 답이다)
+ */
+function failedOf(req, p) {
+  if (req.anyOf) {
+    // OR 전체가 fail 일 때만 여기 온다 — 모든 가지가 각자 실패했으므로 전부 짚는다.
+    return req.anyOf.flatMap((r) =>
+      checkRequirement(r, p) === 'fail' ? failedOf(r, p) : []
+    );
+  }
+  return [req.field];
+}
+
 function checkRegion(program, p) {
   if (!program.region) return 'pass';
   // 지자체 한정 제도인데 어느 지역인지 데이터에 특정되어 있지 않으면
@@ -1089,6 +1110,7 @@ function evaluate(profile, programs, today = new Date()) {
 
     let status;
     let missingFields = [];
+    let failedFields = [];
     if (superseded) status = 'ineligible';
     else if (region === 'fail') status = 'ineligible';
     else if (stage === 'past') status = 'past';
@@ -1100,6 +1122,12 @@ function evaluate(profile, programs, today = new Date()) {
         status = checks.includes('fail') ? 'ineligible' : 'unknown';
       } else if (checks.includes('fail')) status = 'ineligible';
       else status = 'eligible';
+      // 어느 조건이 걸렸는지 — UI 가 이유를 지어내지 않도록 엔진이 짚어 준다.
+      if (status === 'ineligible') {
+        failedFields = [
+          ...new Set(reqs.flatMap((r, i) => (checks[i] === 'fail' ? failedOf(r, p) : []))),
+        ];
+      }
       if (status === 'unknown') {
         missingFields = [
           ...new Set(
@@ -1148,6 +1176,9 @@ function evaluate(profile, programs, today = new Date()) {
       program,
       status,
       missingFields,
+      failedFields,
+      // 지역이 달라 해당되지 않는 경우 — 대체(superseded)와 구분해 이유를 밝힌다.
+      regionFail: region === 'fail' && !superseded,
       notYetEffective,
       softLost,
       superseded,
@@ -2967,6 +2998,23 @@ var FIELD_ASK = {
   isRemoteBirthArea:   { q: '분만 취약지(가까운 분만 병원이 없는 지역)에 사시나요?', opts: ASK_YESNO },
   householdIncomeAnnual: { q: '부부 합산 연소득은 얼마인가요? (만원 단위)', num: true }
 };
+/* 조건 불일치 사유 표시용 이름 — 엔진 failedFields 의 필드를 사람 말로 옮긴다.
+   데이터의 requires 에 등장하는 전 필드를 덮는다(가드 테스트가 전수 대조).
+   여기 없는 필드는 표시하지 않는다 — 어설픈 영문 필드명을 내보내지 않는다. */
+var FIELD_LABEL = {
+  residencyMonths: '거주 기간', birthOrder: '출산 순위', birthDate: '출생일 기준',
+  employment: '고용 형태', weeks: '임신 주차', isDisabledParent: '부모 장애 여부',
+  incomeBracket: '가구 소득 구간', isDisabledMother: '산모 장애 여부',
+  childrenAfterBirth: '자녀 수', childAgeMonths: '아이 월령',
+  spouseEmployment: '배우자 고용 형태', isTeenMother: '청소년 산모 여부',
+  newbornLoanIncomeOk: '소득 기준', stage: '단계', sido: '지역(시·도)',
+  sigungu: '지역(시·군·구)', isUninsuredEmployee: '고용보험 적용 여부',
+  isSingleParent: '한부모 여부', isPreterm: '조산 여부',
+  isHighRiskPregnancy: '고위험 임신 여부', isFixedTerm: '고용 계약 형태',
+  isCongenitalAnomaly: '선천성 이상 진단 여부', householdIncomeMax: '가구 소득',
+  fetusCount: '태아 수', childrenBefore: '자녀 수', dueDate: '출산 예정일'
+};
+
 /* 온보딩 시트가 이미 받는 값은 그리로 보낸다 — 같은 질문을 두 군데 두지 않는다 */
 var SHEET_FIELD_LABEL = {
   incomeBracket: '가구 소득 구간', sido: '시·도', sigungu: '시·군·구',
@@ -3032,6 +3080,25 @@ function moneyRow(r, showAmount) {
     var dl = function (label, value) {
       return value ? '<div class="dl"><dt>' + label + '</dt><dd>' + esc(value) + '</dd></div>' : '';
     };
+    // 왜 해당되지 않는지 — 엔진이 짚은 조건만 말한다. UI 가 이유를 지어내지 않는다.
+    if (r.status === 'ineligible' && !r.superseded) {
+      if (r.regionFail && g.region) {
+        var rgTxt = g.region.sigungu ? g.region.sido + ' ' + g.region.sigungu + ' 제도입니다'
+          : (g.region.sigungus && g.region.sigungus.length) ? g.region.sido + ' 일부 시·군·구 한정 제도입니다'
+          : g.region.sido + ' 제도입니다';
+        h += dl('해당되지 않는 이유', '거주 지역이 다릅니다 — ' + rgTxt);
+      } else if (r.failedFields && r.failedFields.length) {
+        var flabels = [];
+        r.failedFields.forEach(function (f) {
+          var lb = FIELD_LABEL[f];
+          if (lb && flabels.indexOf(lb) < 0) flabels.push(lb);
+        });
+        if (flabels.length) {
+          h += dl('해당되지 않는 이유', '맞지 않는 조건: ' + flabels.join(' · ') +
+            ' — 상황이 바뀌었다면 내 정보를 고쳐 주세요');
+        }
+      }
+    }
     h += dl('지원 대상', g.eligibilityText);
     h += dl('지원 금액', g.amountText);
     if (r.amount && r.amount.note) h += dl('내 조건으로 계산하면', r.amount.note);
@@ -3066,11 +3133,40 @@ function moneySection(key, title, rows, showAmount, note) {
   return h + '</div>';
 }
 
+/* ── 요약 공유 — 사용자가 직접 눌렀을 때만, 화면에 이미 보이는 요약만 담는다.
+   개인정보 최소화: 지역명·건수·금액 합계뿐이다. 날짜·소득·건강 정보·완료 현황은
+   절대 넣지 않는다(가드 테스트가 이 함수의 참조 필드를 고정한다). */
+function buildShareText() {
+  var lines = [];
+  var rg = profile.sigungu || profile.sido;
+  lines.push('예부 — ' + (rg ? rg + ' ' : '') + '출산 준비 혜택 확인');
+  lines.push('확인된 제도 ' + EV.counts.confirmed + '건, 합계 ' +
+    Math.round(EV.total / 10000).toLocaleString('ko-KR') + '만원');
+  if (EV.needsInput.length) lines.push('정보를 더 넣으면 판단되는 제도 ' + EV.needsInput.length + '건');
+  lines.push('https://yebuapp.github.io/');
+  return lines.join('\n');
+}
+function shareSummary() {
+  var text = buildShareText();
+  if (navigator.share) {
+    navigator.share({ text: text }).catch(function () { /* 사용자가 취소한 것 — 정상 */ });
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      var b = document.getElementById('shareBtn');
+      if (b) b.textContent = '복사했습니다 — 붙여넣어 보내세요';
+    }, function () {});
+  }
+}
+
 function viewMoney() {
   var h = '<div class="hero" style="padding-bottom:10px"><div class="hero-row">' +
     '<div class="hero-side" style="gap:6px"><div class="kv-label">확인된 제도만 더한 금액</div>' +
     '<div class="big">' + Math.round(EV.total / 10000).toLocaleString('ko-KR') +
-    '<span class="big-unit">만원</span></div></div></div></div>';
+    '<span class="big-unit">만원</span></div>' +
+    '<div style="margin-top:2px"><button class="askbtn" id="shareBtn" data-share="money">요약 공유</button></div>' +
+    '</div></div></div>';
   h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>지금 확정된 것</h3><span class="count">' + EV.counts.confirmed + '</span></div>' +
     (EV.confirmed.length ? EV.confirmed.map(function (r) { return moneyRow(r, true); }).join('')
       : '<div class="empty" style="padding:20px 0">아직 확정된 제도가 없습니다.</div>') + '</div>';
@@ -3606,7 +3702,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-toggle', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-toggle', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -3621,6 +3717,7 @@ document.addEventListener('click', function (e) {
   if (t.id === 'sosBtn') { sheetOpen = 'sos'; render(); return; }
   if (t.id === 'searchBtn') { sheetOpen = 'search'; render(); focusSearch(); return; }
 
+  if (t.hasAttribute('data-share')) { shareSummary(); return; }
   if (t.hasAttribute('data-closesheet')) {
     if (e.target.closest('.sheet') && !t.classList.contains('iconbtn')) return;
     // 첫 실행 온보딩을 닫으면 현재 값을 확정으로 저장한다 — 매번 다시 뜨지 않게.
