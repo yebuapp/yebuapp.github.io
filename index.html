@@ -1691,7 +1691,7 @@ var profile = {
   // 나는 둘 중 누구인가. 화면이 '내가 할 일'과 '배우자가 할 일'로 갈린다.
   role: 'mother',
   stage: 'pregnant', dueDate: '', birthDate: '',
-  sido: '전남광주통합특별시', sigungu: '담양군',
+  sido: '서울특별시', sigungu: '강남구',
   regionType: null, regionTypeAuto: true, residencyMonths: 12,
   fetusCount: 1, childrenBefore: 0,
   // 고용 형태 등은 미입력(null)이 기본이다. 'employee' 를 박아 두면 확인받지
@@ -1703,8 +1703,12 @@ var profile = {
   localCurrencyOption: false, isCongenitalAnomaly: null, isUninsuredEmployee: null,
   isSingleParent: false, isHighRiskPregnancy: false, dualIncome: null, lossMode: false
 };
+// 처음 연 사람인가 — 저장된 프로필이 없으면 '내 정보'를 먼저 받는다.
+// 기본값(서울 강남구)이 무엇이든, 확인 안 받은 지역으로 시작하게 두지 않는다.
+var FIRST_RUN = false;
 (function () {
   var saved = store('yebu.profile');
+  FIRST_RUN = !saved;
   if (saved) { try { var o = JSON.parse(saved); for (var k in o) profile[k] = o[k]; } catch (e) {} }
   // v2 마이그레이션 — 입력 UI 가 없던 시절의 하드코딩 기본값이 저장돼 있다.
   // 그 값들은 사용자가 고른 적이 없으므로 미입력으로 되돌린다.
@@ -2788,7 +2792,7 @@ function chgRow(c) {
 }
 
 /* ── 내 정보 시트 ──────────────────────────────────────────────────────── */
-var sheetOpen = false; /* false | 'me' | 'sos' */
+var sheetOpen = FIRST_RUN ? 'me' : false; /* false | 'me' | 'sos' | 'search' */
 var inviteMode = null;  /* null | 'show' | 'enter' */
 var searchQuery = '';
 var inviteError = null;
@@ -3166,6 +3170,8 @@ document.addEventListener('click', function (e) {
 
   if (t.hasAttribute('data-closesheet')) {
     if (e.target.closest('.sheet') && !t.classList.contains('iconbtn')) return;
+    // 첫 실행 온보딩을 닫으면 현재 값을 확정으로 저장한다 — 매번 다시 뜨지 않게.
+    saveProfile();
     sheetOpen = false; render(); return;
   }
   if (t.hasAttribute('data-invite')) {
