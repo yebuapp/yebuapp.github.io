@@ -1912,7 +1912,9 @@ function pushShared() {
 
 function svLogin() {
   if (!SUPA) return;
-  SUPA.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname } })
+  // scopes 를 명시하지 않으면 Supabase 가 이메일·프로필사진까지 기본 요청해
+  // 카카오가 KOE205(미설정 동의항목)로 거절한다 — 우리는 닉네임만 받는다.
+  SUPA.auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + location.pathname, scopes: 'profile_nickname' } })
     .then(function (r) { if (r && r.error) { sync.err = '로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); } });
 }
 function svLogout() {
