@@ -2165,11 +2165,19 @@ function applyShared(o) {
   saveProfile();
 }
 
-/** 로컬 초대 코드를 받아 적용한다 — linkedAt 은 '이 날 배우자 정보를 한 번
-    받아 왔다'는 과거 기록이다(내 정보 시트에 그렇게 적힌다). 현재 관계의
-    근거로는 쓰지 않는다: 이 코드는 프로필을 한 번 건네줄 뿐이고, 코드를 만든
-    쪽에는 표식이 남지 않아 같은 부부가 서로 다른 둥지를 보게 된다(36차).
-    서버 커플도 이 표식을 찍지 않는다 — 진실은 서버 쪽 하나뿐이다(34차). */
+/** 로컬 초대 코드를 받아 적용한다.
+
+    linkedAt 의 의미는 하나다: **로컬 모드 전용 메타데이터** — '서버 없이 쓰는
+    이 기기가 언제 배우자 정보를 한 번 건네받았는가'. 쓰임새도 그 하나뿐이라
+    코드·화면·백업이 모두 같은 말을 한다:
+      · 화면 — 내 정보의 이 안내는 비로그인일 때만 나온다(로그인하면 서버 쪽
+        연결 UI 가 대신 나온다).
+      · 로그인 — 서버가 답하는 순간 정리한다(loadCouple). 서버 모드에서는
+        쓸 곳이 없고, 남겨 두면 34차 이전 잔재와 구분되지 않는다.
+      · 백업 — 담지 않는다(BACKUP_OMIT). 기기의 임시 표식이지 옮길 기록이 아니다.
+      · 둥지 — 현재 관계의 근거로 쓰지 않는다. 이 코드는 프로필을 한 번 건네줄
+        뿐이고, 코드를 만든 쪽에는 표식이 남지 않아 같은 부부가 서로 다른 둥지를
+        보게 된다(36차). 관계의 진실은 서버 쪽 하나뿐이다(34차). */
 function applyInvite(o) {
   applyShared(o);
   profile.linkedAt = ENG.fmtDate(TODAY);
@@ -2262,16 +2270,33 @@ function refreshCouple() {
     .eq('couple_id', cid);
   return Promise.all([pPartner, pMarks]).then(function (rs) {
     if (!sync.user || sync.coupleId !== cid) return;
-    var partner = (rs[0].data && rs[0].data[0]) || null;
-    // 상대의 '행이 있는가'가 존재의 근거다 — 닉네임 유무로 판단하면 join 직후
-    // 닉네임이 아직 안 채워진 짧은 구간에 상대를 없다고 오판한다(36차 조사).
-    sync.partnerLinked = !!partner;
-    sync.partnerName = partner ? partner.nickname : null;
-    var marks = {};
-    (rs[1].data || []).forEach(function (m) {
-      if (m.by_user !== sync.user.id) marks[m.item_id] = m.done_at || true;
-    });
-    sync.partnerMarks = marks;
+    // supabase-js 는 HTTP 오류를 reject 가 아니라 r.error 로 돌려준다. 검사하지
+    // 않으면 data 가 null 인 것을 '상대가 없다'·'완료가 없다'로 읽어, 서버 오류
+    // 한 번에 배우자가 사라지고 둥지 콩이 하나가 됐다(37차). 확인하지 못한 것을
+    // 없는 것으로 바꾸지 않는다 — 실패한 쪽은 마지막으로 확인된 값을 그대로 두고
+    // 성공한 쪽만 갱신한다. 둘은 서로 다른 질문이라 한쪽 실패로 다른 쪽의 확인된
+    // 사실까지 버릴 이유가 없고, 반대로 묶어 두면 상대가 실제로 나갔는데도
+    // 관계가 남는 과잉 주장이 생긴다.
+    var failed = false;
+    if (rs[0] && rs[0].error) {
+      failed = true;
+    } else {
+      // 상대의 '행이 있는가'가 존재의 근거다 — 닉네임 유무로 판단하면 join 직후
+      // 닉네임이 아직 안 채워진 짧은 구간에 상대를 없다고 오판한다(36차 조사).
+      var partner = (rs[0] && rs[0].data && rs[0].data[0]) || null;
+      sync.partnerLinked = !!partner;
+      sync.partnerName = partner ? partner.nickname : null;
+    }
+    if (rs[1] && rs[1].error) {
+      failed = true;
+    } else {
+      var marks = {};
+      ((rs[1] && rs[1].data) || []).forEach(function (m) {
+        if (m.by_user !== sync.user.id) marks[m.item_id] = m.done_at || true;
+      });
+      sync.partnerMarks = marks;
+    }
+    if (failed) { onSyncFail(); return; }  // onSyncFail 이 render 까지 한다
     render();
   }, onSyncFail);  // 실패를 삼키지 않는다 — 다른 동기화 경로와 같은 원칙(32차).
 }
