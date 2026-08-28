@@ -593,15 +593,11 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .nest h3{margin:0;font-size:16px}
 .nest .nest-sub{font-size:12.5px;color:var(--sub);margin:2px 0 4px}
 .nest svg{display:block;width:min(100%,300px);height:auto;margin:2px auto 6px}
-.nest-bar-row{display:flex;align-items:center;gap:10px;margin:2px 0 10px}
-.nest-bar{flex:1;height:10px;border-radius:999px;background:var(--surface);overflow:hidden}
-.nest-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .5s ease}
-.nest-bar-label{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
-.nest-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.nest-chip{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:9px 2px;text-align:center;font-size:11.5px;color:var(--sub);line-height:1.55}
-.nest-chip b{display:block;font-weight:600;color:var(--ink);font-size:12px}
-.nest-chip.on{border-color:var(--accent)}
-.nest-chip.on b{color:var(--accent);font-weight:700}
+/* v3 달성 누적형 — 해낸 조각 칩만 나열, 진행 바 없음 */
+.nest-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.nest-chip{border:1.5px solid var(--accent);background:var(--surface);border-radius:999px;padding:7px 14px;font-size:12px;color:var(--ink);display:flex;gap:6px;align-items:baseline;line-height:1.4}
+.nest-chip b{font-weight:700;color:var(--accent);font-size:12px}
+.nest-empty{font-size:12.5px;color:var(--sub);text-align:center;padding:2px 0 0}
 .nest-note{font-size:11.5px;color:var(--sub);margin-top:9px;text-align:center}
 
 /* 공유 카드 미리보기 — 기기 안에서 만든 이미지를 보여주고 공유/저장만 시킨다 */
@@ -1984,20 +1980,31 @@ function importBackup(o) {
   return { profile: mig.profile, done, theme };
 }
 
-/* ── 예부 둥지 — 파생 전용 상태 ────────────────────────────────────
+/* ── 예부 둥지 — 파생 전용 상태 (v3: 달성 누적형, 31차) ────────────────
    이미 있는 기록에서만 계산한다. 둥지를 위한 저장(서버·localStorage 새 키)은
-   금지다 — 소스가 늘면 이 함수에 파생식만 추가한다. 점수·비교·재촉 금지
-   (커플 3원칙): 둥지는 "우리가 함께 쌓은 것"만 보여준다. */
+   금지다. 점수·비교·재촉 금지(커플 3원칙).
+
+   v3 원칙 — "해낸 것만 보여준다":
+   · 조각은 사용자가 실제로 한 일의 흔적일 때만 나타난다. 미완료 표시가
+     없으므로 '해당 없음'과 '못함'이 혼동될 길이 없다(N/A ≠ INCOMPLETE).
+   · 누적이다 — 단계가 바뀌어도 지나온 조각은 사라지지 않는다(done 영구).
+   · couple 은 성취(조각)가 아니라 둥지의 구성원이다 — 콩이 하나여도
+     완전한 둥지다. 한부모·연결 미사용 사용자에게 '부족'을 만들지 않는다.
+   · 이전 소스였던 '혜택 확인'(confirmedCount>0)은 제거 — 임신 준비
+     단계에선 정보를 전부 채워도 구조적으로 0이라(확인 등급 제도가 전부
+     금액 미확정형) 사용자가 통제할 수 없는 시스템 상태였다(31차 실측). */
 function nestState(a) {
-  // a = { coupled, sido, confirmedCount, doneIds }
-  const src = {
+  // a = { coupled, doneIds } — doneIds 는 화면 쪽에서 '우리 가족의 완료'
+  // (내 것 + 로그인 커플이면 배우자 것)를 합쳐 넘긴다.
+  const doneIds = a.doneIds || {};
+  const keys = Object.keys(doneIds);
+  return {
     couple: !!a.coupled,
-    benefit: a.sido != null && (a.confirmedCount || 0) > 0,
-    apply: Object.keys(a.doneIds || {}).some((k) => k.indexOf('apply_') === 0),
-    bag: !!(a.doneIds || {})['birth_bag_prepare'],
+    // 첫 준비: 신청(apply_)도 하위 준비물(본체id/하위id)도 아닌 본체 완료 1건 이상.
+    firstPrep: keys.some((k) => k.indexOf('apply_') !== 0 && k.indexOf('/') < 0),
+    apply: keys.some((k) => k.indexOf('apply_') === 0),
+    bag: !!doneIds['birth_bag_prepare'],
   };
-  const n = ['couple', 'benefit', 'apply', 'bag'].filter((k) => src[k]).length;
-  return { couple: src.couple, benefit: src.benefit, apply: src.apply, bag: src.bag, pct: Math.round((n / 4) * 100) };
 }
 
 return {SHARED_FIELDS,encodeInvite,decodeInvite,sharedChanges,sharedPayload,migrateProfile,alertsFor,weeklyCardData,benefitCardData,exportBackup,importBackup,nestState};
@@ -3507,7 +3514,7 @@ function drawCard(d) {
     var tw = g.measureText(d.title).width;
     g.save(); g.translate(96 + tw + 22, 262); g.scale(2.1, 2.1);
     g.fillStyle = CARD_C.accent; g.fill(new Path2D(HEART_D)); g.restore();
-    var scene = nestSceneSvg(d.nest || { couple: false, benefit: false, apply: false, bag: false, pct: 0 }, CARD_C, 860);
+    var scene = nestSceneSvg(d.nest || { couple: false, firstPrep: false, apply: false, bag: false }, CARD_C, 860);
     return svgToImage(scene).then(function (img) {
       if (img) g.drawImage(img, 110, 340, 860, 526);
       /* 주차 박스 */
@@ -3549,7 +3556,7 @@ function drawCard(d) {
     g.fillStyle = ink; g.font = F(600, 42); g.textAlign = 'right'; g.fillText(r.v, 984, y2); g.textAlign = 'left';
     y2 += 122;
   });
-  var scene2 = nestSceneSvg(d.nest || { couple: false, benefit: false, apply: false, bag: false, pct: 0 }, CARD_C, 380);
+  var scene2 = nestSceneSvg(d.nest || { couple: false, firstPrep: false, apply: false, bag: false }, CARD_C, 380);
   return svgToImage(scene2).then(function (img) {
     if (img) g.drawImage(img, 350, 946, 380, 232);
     g.strokeStyle = line; g.beginPath(); g.moveTo(96, 1218); g.lineTo(984, 1218); g.stroke();
@@ -3663,8 +3670,8 @@ function nestSceneSvg(ns, C, w) {
       '<circle cx="207" cy="127" r="3.6" fill="' + C.blush + '" opacity=".75"/></g>' +
       '<path d="' + HEART_D + '" transform="translate(163 66) scale(.8)" fill="' + C.blush + '"/>';
   }
-  /* 하트 표지판 — 혜택 확인에서 파생 */
-  if (ns.benefit) {
+  /* 하트 표지판 — 첫 준비 완료에서 파생(v3) */
+  if (ns.firstPrep) {
     s += '<g><line x1="56" y1="168" x2="56" y2="112" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
       '<rect x="34" y="76" width="44" height="40" rx="12" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="4"/>' +
       '<path d="' + HEART_D + '" transform="translate(45 85) scale(.9)" fill="' + C.blush + '"/></g>';
@@ -3689,32 +3696,35 @@ function nestTokenColors() {
 }
 
 function currentNest() {
+  // '우리 가족의 완료' — 내 것 + (로그인 커플이면) 배우자 것. 개인별 완료율을
+  // 세거나 비교하지 않는다 — 합쳐서 둥지가 채워졌는지만 본다(커플 3원칙).
+  var family = {};
+  var k;
+  for (k in done) family[k] = done[k];
+  for (k in sync.partnerMarks) family[k] = sync.partnerMarks[k];
   return APPLOGIC.nestState({
     coupled: !!(sync.coupleId || profile.linkedAt),
-    sido: profile.sido,
-    confirmedCount: EV.counts.confirmed,
-    doneIds: done
+    doneIds: family
   });
 }
 
 function nestCardHtml() {
   var ns = currentNest();
-  var n = ns.pct / 25;
-  var chips = [
-    ['couple', '커플 연결'], ['benefit', '혜택 확인'], ['apply', '첫 신청'], ['bag', '출산가방']
-  ].map(function (c) {
-    var on = ns[c[0]];
-    return '<div class="nest-chip' + (on ? ' on' : '') + '">' + c[1] + '<b>' + (on ? '완료 ✓' : '아직') + '</b></div>';
+  // v3 달성 누적형(31차) — 해낸 조각만 나열한다. 미완료 칩·진행 바·N/N 없음:
+  // '해당 없음'이 '못함'처럼 보이는 길을 구조로 막는다. 커플은 조각이 아니라
+  // 구성원(그림의 콩 수)이라 칩에 세지 않는다 — 콩 하나여도 완전한 둥지다.
+  var got = [['firstPrep', '첫 준비'], ['apply', '첫 신청'], ['bag', '출산가방']]
+    .filter(function (c) { return ns[c[0]]; });
+  var chips = got.map(function (c) {
+    return '<div class="nest-chip on">' + c[1] + '<b>완료 ✓</b></div>';
   }).join('');
   return '<div class="nest">' +
     '<h3>우리 가족의 둥지</h3>' +
     '<div class="nest-sub">하나씩 준비하며, 아기와 가까워지고 있어요</div>' +
     nestSceneSvg(ns, nestTokenColors()) +
-    // '100%' 는 '출산 준비 완료'로 읽힐 수 있다(30차 판정). 둥지 네 칸의
-    // 사실만 말한다 — 채움/다 채움. 퍼센트는 바 폭 계산에만 쓴다.
-    '<div class="nest-bar-row"><div class="nest-bar"><div class="nest-fill" style="width:' + ns.pct + '%"></div></div>' +
-    '<span class="nest-bar-label">' + (n === 4 ? '4/4 · 다 채웠어요' : n + '/4 채움') + '</span></div>' +
-    '<div class="nest-chips">' + chips + '</div>' +
+    (got.length
+      ? '<div class="nest-chips">' + chips + '</div>'
+      : '<div class="nest-empty">준비를 하나씩 마치면 둥지가 채워져요</div>') +
     '<div class="nest-note">둥지 상태는 저장되지 않아요 — 이미 있는 데이터로만 계산됩니다</div>' +
     '</div>';
 }
