@@ -11,6 +11,8 @@
 <title>예부</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='37' rx='19' ry='24' fill='%23FFFFFF' stroke='%233538CD' stroke-width='5'/%3E%3Cpath d='M32 13q2-8 9-9' stroke='%233538CD' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='25' cy='33' r='2.6' fill='%23141313'/%3E%3Ccircle cx='39' cy='33' r='2.6' fill='%23141313'/%3E%3Cpath d='M28 42q4 3.5 8 0' stroke='%23141313' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta name="description" content="임신 준비부터 첫돌까지 — 지금 할 일과 신청 기한, 우리 지역 혜택을 공식 출처로 확인합니다.">
 <meta property="og:title" content="예부 — 예비부모의 할 일과 혜택">
 <meta property="og:description" content="임신 준비부터 첫돌까지, 지금 해야 할 일과 받을 수 있는 혜택을 공식 출처로 확인합니다.">
@@ -148,8 +150,15 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 }
 .brand { flex-shrink: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: var(--accent); }
 .place { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex-shrink: 1; overflow: hidden; padding-left: 9px; border-left: 1px solid var(--line); }
-/* 좁은 화면에서는 시·도 이름을 접는다 — 워드마크·병원 버튼과 자리를 다투지 않게 */
-@media (max-width: 399px) { .place span { display: none; } }
+/* 지역명은 절대 줄바꿈하지 않는다 — 30차 실측에서 '노원구'가 세로로 꺾였다 */
+.place b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* 좁은 화면에서는 시·도 이름을 접고 패딩을 조인다 — 시·군·구 이름
+   석 자("노원구")는 어떤 폭에서도 온전히 보여야 한다(30차 실측). */
+@media (max-width: 399px) {
+  .place span { display: none; }
+  .top { padding-left: 14px; padding-right: 14px; }
+  .sos { padding: 0 10px; }
+}
 .place b { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
 .place span {
   font-size: 12px; font-weight: 400; color: var(--mut);
@@ -2670,9 +2679,10 @@ function chkRow(c) {
         '" aria-label="' + esc(it.name) + ' 완료 표시"><i>' + ICON.check + '</i></button>'
       : '<div class="chk locked' + (rowDone || remoteDone ? ' on' : '') + '" title="' + ROLE_LABEL[it.who] + ' 몫입니다" aria-hidden="true"><i>' +
         (rowDone || remoteDone ? ICON.check : ICON.lock) + '</i></div>') +
-    '<button class="row-main" data-open="' + esc(it.id) + '" style="background:none;border:0;text-align:left">' +
+    '<button class="row-main" data-open="' + esc(it.id) + '" aria-expanded="' + (open[it.id] ? 'true' : 'false') + '" style="background:none;border:0;text-align:left">' +
       '<div class="row-title">' + esc(it.name) + '</div>' +
-      '<div class="row-sub">' + esc(it.whatToDo) + '</div>' +
+      // 펼치면 상세 첫 줄(무엇을 하나요)과 같은 문장이 위아래로 겹친다 — 접혔을 때만.
+      (open[it.id] ? '' : '<div class="row-sub">' + esc(it.whatToDo) + '</div>') +
       (tags ? '<div class="row-meta">' + tags + '</div>' : '') +
     '</button>' +
     (w.txt ? '<div class="row-side"><div class="row-when ' + w.cls + '">' + esc(w.txt) + '</div>' +
@@ -2736,7 +2746,7 @@ function inWeekNow(x, weeks) {
 /** 생활 수칙 · 몸의 변화 — 읽을거리라 체크박스를 두지 않는다. */
 function guideRow(x, key) {
   var id = key + x.id;
-  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" style="background:none;border:0">' +
+  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0">' +
     '<div class="row-main">' +
       '<div class="row-title">' + esc(x['제목']) + '</div>' +
       '<div class="row-sub">' + esc((x['내용'] || '').slice(0, 76)) + '</div>' +
@@ -2757,7 +2767,7 @@ function guideRow(x, key) {
 function moRow(x) {
   var it = x.item;
   var id = 'mo_' + it.id;
-  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" style="background:none;border:0">' +
+  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0">' +
     '<div class="row-main">' +
       '<div class="row-title">' + esc(it.name) + '</div>' +
       '<div class="row-sub">' + esc(it.timingText) + (it.doseNote ? ' · ' + esc(it.doseNote) : '') + '</div>' +
@@ -2833,25 +2843,26 @@ function viewToday() {
   }
   h += '</div></div>';
 
-  h += nestCardHtml();
-
-  if (profile.stage === 'pregnant' && D.weeks != null) {
-    // 이번 주를 그림 한 장으로 — 만들기·공유 전부 기기 안에서 끝난다.
-    h += '<div class="sec" style="padding-top:10px;border-bottom:0">' +
-      '<button class="askbtn" data-sharecard="week">이번 주 카드 만들기</button></div>';
-  }
-
-  if (open.fetal && GROWTH && GROWTH.efwG != null) {
-    h += '<div class="sec"><div class="detail" style="border-bottom:0;padding-left:0">' +
-      '<div class="lead">' + GROWTH.efwG + 'g 은 같은 주차 태아들의 ' + (FETAL.percentile || 50) + '번째 백분위, 곧 한가운데 값입니다. ' +
-      '손에 쥐면 생수 ' + GROWTH.efwG + 'mL 만큼입니다.</div>' +
-      '<div class="srcline">물 1mL 가 1g 이라는 정의로 환산한 것입니다 — 무게를 가늠하기 쉬우라고 덧붙인 것이지 아기 크기를 재는 기준은 아닙니다.</div>' +
-      '<div class="warn">이 숫자는 정상 범위가 아닙니다. 우리 아기가 이보다 크거나 작다고 해서 문제가 있다는 뜻이 아닙니다. ' +
-      '실제 판단은 초음파를 본 담당 의사만 할 수 있습니다.</div>' +
-      (FETAL.mustShow || []).map(function (t) { return '<div class="dl"><dd>· ' + esc(t) + '</dd></div>'; }).join('') +
-      (FETAL.source ? '<div class="srcline">' + esc(FETAL.source.name) + '</div>' +
-        goLinks([{ url: FETAL.source.url, label: '원 논문 보기' }]) : '') +
+  /* 색면 블록 — 가장 급한 하나. 30차 실측: 둥지를 먼저 두면 이 블록이
+     375px 에서 fold 아래 1.5화면까지 밀렸다. 정보·실행이 먼저, 둥지는 그
+     아래 — 캐릭터는 레이어이지 주인공이 아니다. */
+  var top = CHK.filter(function (c) {
+    return !isDone(c.item.id) && isMine(c.item.who) && (c.state === 'now' || c.state === 'soon');
+  })[0];
+  if (top) {
+    var w = chkWhen(top);
+    h += '<div class="slab">' +
+      '<div class="slab-eyebrow"><span class="dot"></span>' + (top.state === 'now' ? '지금 하세요' : '곧 하셔야 합니다') + '</div>' +
+      '<h2>' + esc(top.item.name) + '</h2>' +
+      '<p>' + esc(top.item.whatToDo) + '</p>' +
+      '<div class="slab-foot">' +
+        '<button class="pill" data-done="' + esc(top.item.id) + '">' + ICON.check + '완료로 표시</button>' +
+        (w.txt ? '<div class="slab-when">' + esc(top.item.when && top.item.when.text ? top.item.when.text : w.txt) + '</div>' : '') +
       '</div></div>';
+    // 지금 할 일의 준비물이 가장 중요하다. 색면 블록에 올렸다고 목록에서 빼면
+    // 정작 그 항목의 세부 체크리스트를 볼 데가 없어진다.
+    var topSteps = stepsBlock(top.item, isMine(top.item.who));
+    if (topSteps) h += '<div class="sec" style="margin-top:-12px">' + topSteps + '</div>';
   }
 
   /* 아빠 주간 카드 — "이번 주 아내 몸에 일어나는 일 → 오늘 할 행동 하나".
@@ -2876,24 +2887,25 @@ function viewToday() {
     }
   }
 
-  /* 색면 블록 — 가장 급한 하나 */
-  var top = CHK.filter(function (c) {
-    return !isDone(c.item.id) && isMine(c.item.who) && (c.state === 'now' || c.state === 'soon');
-  })[0];
-  if (top) {
-    var w = chkWhen(top);
-    h += '<div class="slab">' +
-      '<div class="slab-eyebrow"><span class="dot"></span>' + (top.state === 'now' ? '지금 하세요' : '곧 하셔야 합니다') + '</div>' +
-      '<h2>' + esc(top.item.name) + '</h2>' +
-      '<p>' + esc(top.item.whatToDo) + '</p>' +
-      '<div class="slab-foot">' +
-        '<button class="pill" data-done="' + esc(top.item.id) + '">' + ICON.check + '완료로 표시</button>' +
-        (w.txt ? '<div class="slab-when">' + esc(top.item.when && top.item.when.text ? top.item.when.text : w.txt) + '</div>' : '') +
+  h += nestCardHtml();
+
+  if (profile.stage === 'pregnant' && D.weeks != null) {
+    // 이번 주를 그림 한 장으로 — 만들기·공유 전부 기기 안에서 끝난다.
+    h += '<div class="sec" style="padding-top:10px;border-bottom:0">' +
+      '<button class="askbtn" data-sharecard="week">이번 주 카드 만들기</button></div>';
+  }
+
+  if (open.fetal && GROWTH && GROWTH.efwG != null) {
+    h += '<div class="sec"><div class="detail" style="border-bottom:0;padding-left:0">' +
+      '<div class="lead">' + GROWTH.efwG + 'g 은 같은 주차 태아들의 ' + (FETAL.percentile || 50) + '번째 백분위, 곧 한가운데 값입니다. ' +
+      '손에 쥐면 생수 ' + GROWTH.efwG + 'mL 만큼입니다.</div>' +
+      '<div class="srcline">물 1mL 가 1g 이라는 정의로 환산한 것입니다 — 무게를 가늠하기 쉬우라고 덧붙인 것이지 아기 크기를 재는 기준은 아닙니다.</div>' +
+      '<div class="warn">이 숫자는 정상 범위가 아닙니다. 우리 아기가 이보다 크거나 작다고 해서 문제가 있다는 뜻이 아닙니다. ' +
+      '실제 판단은 초음파를 본 담당 의사만 할 수 있습니다.</div>' +
+      (FETAL.mustShow || []).map(function (t) { return '<div class="dl"><dd>· ' + esc(t) + '</dd></div>'; }).join('') +
+      (FETAL.source ? '<div class="srcline">' + esc(FETAL.source.name) + '</div>' +
+        goLinks([{ url: FETAL.source.url, label: '원 논문 보기' }]) : '') +
       '</div></div>';
-    // 지금 할 일의 준비물이 가장 중요하다. 색면 블록에 올렸다고 목록에서 빼면
-    // 정작 그 항목의 세부 체크리스트를 볼 데가 없어진다.
-    var topSteps = stepsBlock(top.item, isMine(top.item.who));
-    if (topSteps) h += '<div class="sec" style="margin-top:-12px">' + topSteps + '</div>';
   }
 
   /* 이번 시기의 검사·진료 — 임신 중일 때만 */
@@ -2937,14 +2949,14 @@ function viewToday() {
     var body = (GUIDE['몸의변화'] || []).filter(function (x) { return inWeekNow(x, w); });
 
     if (body.length) {
-      h += '<div class="sec"><button class="sec-head" data-fold="body">' +
+      h += '<div class="sec"><button class="sec-head" data-fold="body" aria-expanded="' + (fold.body ? 'true' : 'false') + '">' +
         '<h3>지금 몸에 일어나는 일</h3><span class="count">' + body.length + '</span>' +
         '<span class="chev' + (fold.body ? ' up' : '') + '">' + ICON.chev + '</span></button>';
       if (fold.body) h += body.map(function (x) { return guideRow(x, 'b_'); }).join('');
       h += '</div>';
     }
     if (rules.length) {
-      h += '<div class="sec"><button class="sec-head" data-fold="rules">' +
+      h += '<div class="sec"><button class="sec-head" data-fold="rules" aria-expanded="' + (fold.rules ? 'true' : 'false') + '">' +
         '<h3>이 시기에 조심할 것</h3><span class="count">' + rules.length + '</span>' +
         '<span class="chev' + (fold.rules ? ' up' : '') + '">' + ICON.chev + '</span></button>';
       if (fold.rules) h += rules.map(function (x) { return guideRow(x, 'r_'); }).join('');
@@ -2960,7 +2972,7 @@ function viewToday() {
       '<span class="count">' + chgSoon.length + '</span></div>' + chgSoon.map(chgRow).join('') + '</div>';
   }
   if (chgRest.length) {
-    h += '<div class="sec"><button class="sec-head" data-fold="chg">' +
+    h += '<div class="sec"><button class="sec-head" data-fold="chg" aria-expanded="' + (fold.chg ? 'true' : 'false') + '">' +
       '<h3>그 밖의 제도 변화</h3><span class="count">' + chgRest.length + '</span>' +
       '<span class="chev' + (fold.chg ? ' up' : '') + '">' + ICON.chev + '</span></button>';
     if (fold.chg) {
@@ -2998,7 +3010,7 @@ function viewTodo() {
     var isOpen = !foldable || fold[g.key];
     // 카운트는 신청 탭·배우자 섹션과 같은 관용구 — 완료가 생기면 '남음 / 전체'로.
     var doneHere = rows.filter(function (c) { return isDone(c.item.id); }).length;
-    h += '<div class="sec"><button class="sec-head" data-fold="' + g.key + '"' + (foldable ? '' : ' disabled style="cursor:default"') + '>' +
+    h += '<div class="sec"><button class="sec-head" data-fold="' + g.key + '"' + (foldable ? ' aria-expanded="' + (isOpen ? 'true' : 'false') + '"' : ' disabled style="cursor:default"') + '>' +
       '<h3>' + g.title + '</h3><span class="count">' + (doneHere ? (rows.length - doneHere) + ' / ' + rows.length : rows.length) + '</span>' +
       (foldable ? '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span>' : '') +
       '</button>';
@@ -3012,7 +3024,7 @@ function viewTodo() {
   });
   if (theirs.length) {
     var theirsDone = theirs.filter(function (c) { return isDone(c.item.id) || !!sync.partnerMarks[c.item.id]; }).length;
-    h += '<div class="sec theirs"><button class="sec-head" data-fold="theirs">' +
+    h += '<div class="sec theirs"><button class="sec-head" data-fold="theirs" aria-expanded="' + (fold.theirs ? 'true' : 'false') + '">' +
       '<h3>' + ROLE_LABEL[OTHER[profile.role]] + '가 할 일</h3>' +
       '<span class="count">' + theirsDone + ' / ' + theirs.length + '</span>' +
       '<span class="chev' + (fold.theirs ? ' up' : '') + '">' + ICON.chev + '</span></button>';
@@ -3038,7 +3050,7 @@ function viewTodo() {
  */
 function lifeRow(x) {
   var id = 'f_' + x.id;
-  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" style="background:none;border:0">' +
+  var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0">' +
     '<div class="row-main">' +
       '<div class="row-title">' + esc(x.title) + '</div>' +
       (x.summary ? '<div class="row-sub">' + esc(x.summary) + '</div>' : '') +
@@ -3069,7 +3081,7 @@ function lifeRow(x) {
 function lifeDrawer(key, title, note, rowsHtml, count) {
   if (!rowsHtml) return '';
   var isOpen = !!fold[key];
-  var h = '<div class="sec"><button class="sec-head" data-fold="' + key + '">' +
+  var h = '<div class="sec"><button class="sec-head" data-fold="' + key + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
     '<h3>' + title + '</h3>' + (count ? '<span class="count">' + count + '</span>' : '') +
     '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
   if (isOpen) {
@@ -3186,9 +3198,12 @@ function viewJourney() {
       else if (b.key === 'anytime') { when = '상시'; }
       var jkey = 'apply_' + j.id;
       var jdone = isDone(jkey);
+      // 아직 신청이 성립하지 않는 항목(notyet)에는 '신청 완료' 체크를 주지
+      // 않는다 — 신청 없이 완료 표시가 가능하면 기록이 거짓이 된다(30차).
       return '<div class="item"><div class="row' + (jdone ? ' done' : '') + '">' +
+        (b.key === 'notyet' ? '' :
         '<button class="chk" data-done="' + esc(jkey) + '" aria-pressed="' + (jdone ? 'true' : 'false') +
-        '" aria-label="' + esc(j.name) + ' 신청 완료 표시"><i>' + ICON.check + '</i></button>' +
+        '" aria-label="' + esc(j.name) + ' 신청 완료 표시"><i>' + ICON.check + '</i></button>') +
         '<div class="row-main">' +
         '<div class="row-title">' + esc(j.name) + '</div>' +
         (j.applyVia ? '<div class="row-sub">' + esc(j.applyVia) + '</div>' : '') +
@@ -3321,9 +3336,9 @@ function moneyRow(r, showAmount) {
   var pid = 'p_' + r.program.id;
   var amt = showAmount && r.amount && r.amount.value != null ? ENG.won(r.amount.value) : null;
   var h = '<div class="item"><div class="row">' +
-    '<button class="row-main" data-open="' + esc(pid) + '" style="background:none;border:0;text-align:left">' +
+    '<button class="row-main" data-open="' + esc(pid) + '" aria-expanded="' + (open[pid] ? 'true' : 'false') + '" style="background:none;border:0;text-align:left">' +
       '<div class="row-title">' + esc(r.program.name) + '</div>' +
-      (r.program.applyVia ? '<div class="row-sub">' + esc(r.program.applyVia) + '</div>' : '') +
+      (r.program.applyVia && !open[pid] ? '<div class="row-sub">' + esc(r.program.applyVia) + '</div>' : '') +
       '<div class="row-meta">' +
         '<span class="tag line">' + esc(LAYER[r.program.layer] || r.program.layer || '') + '</span>' +
         whyNotCounted(r) +
@@ -3390,7 +3405,7 @@ function moneyRow(r, showAmount) {
 function moneySection(key, title, rows, showAmount, note) {
   if (!rows.length) return '';
   var isOpen = !!fold[key];
-  var h = '<div class="sec"><button class="sec-head" data-fold="' + key + '">' +
+  var h = '<div class="sec"><button class="sec-head" data-fold="' + key + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
     '<h3>' + title + '</h3><span class="count">' + rows.length + '</span>' +
     '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
   if (isOpen) {
@@ -3695,8 +3710,10 @@ function nestCardHtml() {
     '<h3>우리 가족의 둥지</h3>' +
     '<div class="nest-sub">하나씩 준비하며, 아기와 가까워지고 있어요</div>' +
     nestSceneSvg(ns, nestTokenColors()) +
+    // '100%' 는 '출산 준비 완료'로 읽힐 수 있다(30차 판정). 둥지 네 칸의
+    // 사실만 말한다 — 채움/다 채움. 퍼센트는 바 폭 계산에만 쓴다.
     '<div class="nest-bar-row"><div class="nest-bar"><div class="nest-fill" style="width:' + ns.pct + '%"></div></div>' +
-    '<span class="nest-bar-label">' + n + '/4 · ' + ns.pct + '%</span></div>' +
+    '<span class="nest-bar-label">' + (n === 4 ? '4/4 · 다 채웠어요' : n + '/4 채움') + '</span></div>' +
     '<div class="nest-chips">' + chips + '</div>' +
     '<div class="nest-note">둥지 상태는 저장되지 않아요 — 이미 있는 데이터로만 계산됩니다</div>' +
     '</div>';
@@ -3759,7 +3776,7 @@ function viewMoney() {
   var osServices = OS.services.filter(function (s) { return s.appliesCount > 0; });
   if (osServices.length) {
     var osOpen = !!fold.onestop;
-    h += '<div class="sec"><button class="sec-head" data-fold="onestop">' +
+    h += '<div class="sec"><button class="sec-head" data-fold="onestop" aria-expanded="' + (osOpen ? 'true' : 'false') + '">' +
       '<h3>한 번에 신청</h3><span class="count">' + osServices.length + '</span>' +
       '<span class="chev' + (osOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
     if (osOpen) {
@@ -3802,7 +3819,7 @@ function viewMoney() {
 function chgRow(c) {
   var id = 'c_' + c.change.id;
       var s = '<div class="item"><div class="row">' +
-        '<button class="row-main" data-open="' + esc(id) + '" style="background:none;border:0;text-align:left">' +
+        '<button class="row-main" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0;text-align:left">' +
         '<div class="row-title">' + esc(c.change.title) + '</div>' +
         '<div class="row-sub">' + esc(c.change.summary) + '</div>' +
         '<div class="row-meta"><span class="tag' + (c.change.kind === '신설' ? ' lime' : '') + '">' + esc(c.change.kind) + '</span>' +
@@ -3869,7 +3886,9 @@ function sheetHtml() {
   f += '<div class="field"><label>기준중위소득 대비 가구 소득</label><select data-set="incomeBracket">' +
     [['', '모름 · 선택 안 함'], ['under80', '80% 이하'], ['under100', '100% 이하'], ['under150', '150% 이하'], ['over150', '150% 초과']].map(function (o) {
       return '<option value="' + o[0] + '"' + ((profile.incomeBracket || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-    }).join('') + '</select></div>';
+    }).join('') + '</select>' +
+    '<div class="fieldnote">기준중위소득은 정부가 복지 지원 대상을 정할 때 쓰는 가구 소득 기준입니다. ' +
+    '모르면 <b>모름</b>으로 두세요 — 소득이 필요한 제도는 &lsquo;정보를 더 주시면&rsquo;으로 따로 보여 드립니다.</div></div>';
   [['isDisabledParent', '부 또는 모가 등록장애인입니다'],
    ['isTeenMother', '청소년 산모입니다'],
    ['isSingleParent', '한부모 가정입니다'],
