@@ -2293,31 +2293,35 @@ function refreshCouple() {
     if (!sync.user || sync.coupleId !== cid) return;
     // supabase-js 는 HTTP 오류를 reject 가 아니라 r.error 로 돌려준다. 검사하지
     // 않으면 data 가 null 인 것을 '상대가 없다'·'완료가 없다'로 읽어, 서버 오류
-    // 한 번에 배우자가 사라지고 둥지 콩이 하나가 됐다(37차). 확인하지 못한 것을
-    // 없는 것으로 바꾸지 않는다 — 실패한 쪽은 마지막으로 확인된 값을 그대로 두고
-    // 성공한 쪽만 갱신한다. 둘은 서로 다른 질문이라 한쪽 실패로 다른 쪽의 확인된
-    // 사실까지 버릴 이유가 없고, 반대로 묶어 두면 상대가 실제로 나갔는데도
-    // 관계가 남는 과잉 주장이 생긴다.
-    var failed = false;
-    if (rs[0] && rs[0].error) {
-      failed = true;
-    } else {
-      // 상대의 '행이 있는가'가 존재의 근거다 — 닉네임 유무로 판단하면 join 직후
-      // 닉네임이 아직 안 채워진 짧은 구간에 상대를 없다고 오판한다(36차 조사).
-      var partner = (rs[0] && rs[0].data && rs[0].data[0]) || null;
-      sync.partnerLinked = !!partner;
-      sync.partnerName = partner ? partner.nickname : null;
+    // 한 번에 배우자가 사라졌다(37차).
+    //
+    // 두 조회는 대등하지 않다 — 상대의 완료 표시는 상대가 있어야 뜻이 있는
+    // 딸린 사실이다(39차). 그래서 상대 조회를 먼저 보고 세 갈래로 나눈다:
+    //  · 상대를 확인하지 못했으면(오류) 관계 자체를 모르는 것이니 아무것도
+    //    건드리지 않는다. 완료 표시만 새로 받아 봐야 반쪽짜리 진실이 된다.
+    //  · 상대가 없는 것이 확인됐으면 그의 완료 표시도 함께 내린다. 모르면
+    //    지우지 않지만, 없는 것이 확인됐는데 딸린 기록을 남겨 두지도 않는다
+    //    (실측: 콩은 하나인데 옛 배우자의 완료로 둥지 조각이 켜져 있었다).
+    //  · 상대가 있으면 그의 완료 표시만 갱신하고, 그 조회가 실패했을 때는
+    //    마지막으로 확인된 값을 그대로 둔다.
+    if (rs[0] && rs[0].error) { onSyncFail(); return; }
+    // 상대의 '행이 있는가'가 존재의 근거다 — 닉네임 유무로 판단하면 join 직후
+    // 닉네임이 아직 안 채워진 짧은 구간에 상대를 없다고 오판한다(36차 조사).
+    var partner = (rs[0] && rs[0].data && rs[0].data[0]) || null;
+    sync.partnerLinked = !!partner;
+    sync.partnerName = partner ? partner.nickname : null;
+    if (!partner) {
+      // 상대가 없다 — 완료 표시 조회가 실패했든 아니든 결과는 같다(빈 값).
+      // 사용자가 보는 화면은 정확하므로 실패를 따로 알리지 않는다.
+      sync.partnerMarks = {};
+      render(); return;
     }
-    if (rs[1] && rs[1].error) {
-      failed = true;
-    } else {
-      var marks = {};
-      ((rs[1] && rs[1].data) || []).forEach(function (m) {
-        if (m.by_user !== sync.user.id) marks[m.item_id] = m.done_at || true;
-      });
-      sync.partnerMarks = marks;
-    }
-    if (failed) { onSyncFail(); return; }  // onSyncFail 이 render 까지 한다
+    if (rs[1] && rs[1].error) { onSyncFail(); return; }  // 상대는 그대로, 완료만 못 받음
+    var marks = {};
+    ((rs[1] && rs[1].data) || []).forEach(function (m) {
+      if (m.by_user !== sync.user.id) marks[m.item_id] = m.done_at || true;
+    });
+    sync.partnerMarks = marks;
     render();
   }, onSyncFail);  // 실패를 삼키지 않는다 — 다른 동기화 경로와 같은 원칙(32차).
 }
