@@ -1953,8 +1953,21 @@ function benefitCardData(a) {
    올리는 대신, 사용자가 자기 파일(yebu-backup.json)로 들고 나가게 한다.
    데이터의 주인은 사용자다 — 예부 서버가 아니라. */
 
+/** 백업에 담지 않는 프로필 필드 — 관계 상태는 내 기록이 아니다(34차).
+    백업은 내 기록을 다른 기기로 옮기는 수단이지, 이미 끝난 관계를 되살리는
+    수단이 아니다. 지금 배우자가 있는지는 서버(로그인) 또는 이 기기의 연결
+    상태가 말한다. 백업 파일이 말하게 두면, 해제한 사용자가 옛 백업을 되돌린
+    순간 있지도 않은 배우자가 둥지에 다시 그려진다(재현 확인). */
+const BACKUP_OMIT = ['linkedAt'];
+
+function stripRelationship(profile) {
+  const out = { ...(profile || {}) };
+  BACKUP_OMIT.forEach((k) => { delete out[k]; });
+  return out;
+}
+
 function exportBackup(profile, done, theme) {
-  return { app: 'yebu', v: 1, profile, done, theme: theme || 'system' };
+  return { app: 'yebu', v: 1, profile: stripRelationship(profile), done, theme: theme || 'system' };
 }
 
 /** 백업 파일을 검증해 적용 가능한 형태로 돌려준다. 형식이 어긋나면 이유를 말한다. */
@@ -1975,7 +1988,9 @@ function importBackup(o) {
     }
   }
   // 프로필은 마이그레이션을 통과시켜 낡은 백업도 현재 규칙(확인 안 된 기본값 되돌림)을 따르게 한다.
-  const mig = migrateProfile(o.profile);
+  // 관계 상태는 파일이 아니라 현재 맥락에서 온다 — 이미 배포된 옛 백업에는
+  // linkedAt 이 들어 있으므로 여기서 걷어낸다(스키마 v 는 그대로 1).
+  const mig = migrateProfile(stripRelationship(o.profile));
   const theme = o.theme === 'light' || o.theme === 'dark' ? o.theme : 'system';
   return { profile: mig.profile, done, theme };
 }
@@ -2143,9 +2158,18 @@ function readInviteCode(code) {
   return APPLOGIC.decodeInvite(code);
 }
 
-function applyInvite(o) {
+/** 받아 온 공유 프로필을 내 프로필에 적용한다 — 화이트리스트 필드만. */
+function applyShared(o) {
   var ch = APPLOGIC.sharedChanges(o);
   Object.keys(ch).forEach(function (k) { profile[k] = ch[k]; });
+  saveProfile();
+}
+
+/** 로컬 초대 코드로 연결 — linkedAt 은 '서버 없이 이 기기에서 이어졌다'는
+    상태 표시다. 서버 커플은 이 표식을 쓰지 않는다(진실은 서버의 couple_id
+    하나뿐): 겹쳐 찍으면 상대가 먼저 나갔을 때 내 화면에만 관계가 남는다(34차). */
+function applyInvite(o) {
+  applyShared(o);
   profile.linkedAt = ENG.fmtDate(TODAY);
   saveProfile();
 }
@@ -2316,7 +2340,7 @@ function svJoin(code) {
     /* 상대가 밀어 둔 공유 프로필을 받아 적용한다 — 코드 방식과 같은 규칙. */
     SUPA.from('profile_shared').select('data').eq('couple_id', sync.coupleId).maybeSingle()
       .then(function (s) {
-        if (s && s.data && s.data.data && s.data.data.v === 1) applyInvite(s.data.data);
+        if (s && s.data && s.data.data && s.data.data.v === 1) applyShared(s.data.data);
         return ensureProfileRow();
       }, function () {})
       .then(function () { return pushAllMarks(); })
