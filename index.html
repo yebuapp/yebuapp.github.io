@@ -2000,10 +2000,17 @@ function nestState(a) {
   const keys = Object.keys(doneIds);
   return {
     couple: !!a.coupled,
-    // 첫 준비: 신청(apply_)도 하위 준비물(본체id/하위id)도 아닌 본체 완료 1건 이상.
-    firstPrep: keys.some((k) => k.indexOf('apply_') !== 0 && k.indexOf('/') < 0),
+    // 첫 걸음: 신청(apply_)도 하위 준비물(본체id/하위id)도 아닌 본체 완료 1건 이상.
+    // '첫 준비'라 부르지 않는다 — 출생신고(행정) 하나만 완료한 사용자에게
+    // '준비'는 과대 서술이었다(32차). 어떤 완료든 여정의 첫 걸음인 것은 정확하다.
+    firstStep: keys.some((k) => k.indexOf('apply_') !== 0 && k.indexOf('/') < 0),
     apply: keys.some((k) => k.indexOf('apply_') === 0),
     bag: !!doneIds['birth_bag_prepare'],
+    // 여정 후반(출산 후~첫돌)의 추억 — v3.1(32차). 전 가정 보편(GOOD) 항목만:
+    // 아기 맞이 서류(출생신고·행복출산 원스톱), 첫 검진·접종(선천성 검사·
+    // B형간염/BCG·영유아 1차 검진). id 실존은 가드가 데이터와 대조한다.
+    docs: !!(doneIds['birth_registration'] || doneIds['happy_birth_onestop']),
+    care: !!(doneIds['newborn_screening'] || doneIds['newborn_vaccination'] || doneIds['infant_health_checkup']),
   };
 }
 
@@ -2210,11 +2217,15 @@ function loadCouple() {
 /* 상대 닉네임과 완료 표시를 서버에서 다시 받아온다(무료 = 수동 동기화). */
 function refreshCouple() {
   if (!SUPA || !sync.user || !sync.coupleId) return Promise.resolve();
+  // 요청 시점의 커플을 기억한다 — 응답이 오는 사이 해제·재연결이 일어나면
+  // 옛 상대의 늦은 응답이 새 커플의 표시를 덮어쓸 수 있다(32차).
+  var cid = sync.coupleId;
   var pPartner = SUPA.from('profiles').select('user_id,nickname')
-    .eq('couple_id', sync.coupleId).neq('user_id', sync.user.id);
+    .eq('couple_id', cid).neq('user_id', sync.user.id);
   var pMarks = SUPA.from('done_marks').select('item_id,by_user,done_at')
-    .eq('couple_id', sync.coupleId);
+    .eq('couple_id', cid);
   return Promise.all([pPartner, pMarks]).then(function (rs) {
+    if (!sync.user || sync.coupleId !== cid) return;
     var partner = (rs[0].data && rs[0].data[0]) || null;
     sync.partnerName = partner ? partner.nickname : null;
     var marks = {};
@@ -2223,7 +2234,7 @@ function refreshCouple() {
     });
     sync.partnerMarks = marks;
     render();
-  }, function () { render(); });
+  }, onSyncFail);  // 실패를 삼키지 않는다 — 다른 동기화 경로와 같은 원칙(32차).
 }
 
 /* 내 완료 표시 하나를 서버에 반영한다. 실패해도 로컬은 그대로다. */
@@ -2426,6 +2437,8 @@ function svLeave() {
     sync.msg = null; sync.confirm = null;
     if (r.error) { sync.err = '해제하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); return; }
     sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    // 로컬 초대 연결 표식도 함께 정리 — 해제했는데 둥지에 콩이 둘 남으면 거짓이다(32차).
+    if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
   });
 }
@@ -2446,6 +2459,7 @@ function svDelete() {
     SUPA.auth.signOut().then(function () {}, function () {});
     sync.user = null; sync.nickname = null; sync.coupleId = null; sync.partnerName = null;
     sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
   });
 }
@@ -3392,6 +3406,8 @@ function moneyRow(r, showAmount) {
     if (r.amount && r.amount.value == null && r.amount.reason) h += dl('금액을 정할 수 없는 이유', r.amount.reason);
     h += dl('선정 기준', g.selectionText);
     h += dl('신청 기한', [g.deadline && g.deadline.text, g.deadlineNote].filter(Boolean).join(' — '));
+    // 개편 예고 — 데이터에 있던 것을 이제야 보여준다(32차: 죽은 필드였다).
+    if (g.pendingChange && g.pendingChange.text) h += '<div class="warn">' + esc(g.pendingChange.text) + '</div>';
     h += dl('필요 서류', g.docsText);
     h += dl('신청 방법', g.applyVia);
     h += dl('지급 시기', g.paymentScheduleText);
@@ -3514,7 +3530,7 @@ function drawCard(d) {
     var tw = g.measureText(d.title).width;
     g.save(); g.translate(96 + tw + 22, 262); g.scale(2.1, 2.1);
     g.fillStyle = CARD_C.accent; g.fill(new Path2D(HEART_D)); g.restore();
-    var scene = nestSceneSvg(d.nest || { couple: false, firstPrep: false, apply: false, bag: false }, CARD_C, 860);
+    var scene = nestSceneSvg(d.nest || { couple: false, firstStep: false, apply: false, bag: false, docs: false, care: false }, CARD_C, 860);
     return svgToImage(scene).then(function (img) {
       if (img) g.drawImage(img, 110, 340, 860, 526);
       /* 주차 박스 */
@@ -3556,7 +3572,7 @@ function drawCard(d) {
     g.fillStyle = ink; g.font = F(600, 42); g.textAlign = 'right'; g.fillText(r.v, 984, y2); g.textAlign = 'left';
     y2 += 122;
   });
-  var scene2 = nestSceneSvg(d.nest || { couple: false, firstPrep: false, apply: false, bag: false }, CARD_C, 380);
+  var scene2 = nestSceneSvg(d.nest || { couple: false, firstStep: false, apply: false, bag: false, docs: false, care: false }, CARD_C, 380);
   return svgToImage(scene2).then(function (img) {
     if (img) g.drawImage(img, 350, 946, 380, 232);
     g.strokeStyle = line; g.beginPath(); g.moveTo(96, 1218); g.lineTo(984, 1218); g.stroke();
@@ -3670,8 +3686,8 @@ function nestSceneSvg(ns, C, w) {
       '<circle cx="207" cy="127" r="3.6" fill="' + C.blush + '" opacity=".75"/></g>' +
       '<path d="' + HEART_D + '" transform="translate(163 66) scale(.8)" fill="' + C.blush + '"/>';
   }
-  /* 하트 표지판 — 첫 준비 완료에서 파생(v3) */
-  if (ns.firstPrep) {
+  /* 하트 표지판 — 첫 걸음(첫 완료)에서 파생(v3.1) */
+  if (ns.firstStep) {
     s += '<g><line x1="56" y1="168" x2="56" y2="112" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
       '<rect x="34" y="76" width="44" height="40" rx="12" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="4"/>' +
       '<path d="' + HEART_D + '" transform="translate(45 85) scale(.9)" fill="' + C.blush + '"/></g>';
@@ -3687,6 +3703,17 @@ function nestSceneSvg(ns, C, w) {
     s += '<g><rect x="242" y="146" width="40" height="28" rx="9" fill="' + C.tint + '" stroke="' + C.accent + '" stroke-width="4"/>' +
       '<path d="M251 146 q11 -14 22 0" fill="none" stroke="' + C.accent + '" stroke-width="4" stroke-linecap="round"/>' +
       '<path d="' + HEART_D + '" transform="translate(254 152) scale(.6)" fill="' + C.blush + '"/></g>';
+  }
+  /* 편지봉투 — 아기 맞이 서류(출생신고·원스톱)에서 파생(v3.1) */
+  if (ns.docs) {
+    s += '<g><rect x="74" y="160" width="40" height="28" rx="6" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="3.5"/>' +
+      '<path d="M76 163 l18 13 l18 -13" fill="none" stroke="' + C.accent + '" stroke-width="3"/>' +
+      '<path d="' + HEART_D + '" transform="translate(87 170) scale(.55)" fill="' + C.blush + '"/></g>';
+  }
+  /* 하트 십자 배지 — 첫 검진·접종에서 파생(v3.1) */
+  if (ns.care) {
+    s += '<g><circle cx="313" cy="164" r="16" fill="' + C.surface + '" stroke="' + C.accent + '" stroke-width="3.5"/>' +
+      '<path d="M313 156 v16 M305 164 h16" stroke="' + C.blush + '" stroke-width="5" stroke-linecap="round"/></g>';
   }
   return s + '</svg>';
 }
@@ -3713,7 +3740,8 @@ function nestCardHtml() {
   // v3 달성 누적형(31차) — 해낸 조각만 나열한다. 미완료 칩·진행 바·N/N 없음:
   // '해당 없음'이 '못함'처럼 보이는 길을 구조로 막는다. 커플은 조각이 아니라
   // 구성원(그림의 콩 수)이라 칩에 세지 않는다 — 콩 하나여도 완전한 둥지다.
-  var got = [['firstPrep', '첫 준비'], ['apply', '첫 신청'], ['bag', '출산가방']]
+  var got = [['firstStep', '첫 걸음'], ['apply', '첫 신청'], ['bag', '출산가방'],
+    ['docs', '아기 맞이 서류'], ['care', '첫 검진·접종']]
     .filter(function (c) { return ns[c[0]]; });
   var chips = got.map(function (c) {
     return '<div class="nest-chip on">' + c[1] + '<b>완료 ✓</b></div>';
@@ -3754,6 +3782,8 @@ function backupApply() {
   applyTheme(theme);
   store('yebu.done', JSON.stringify(done));
   saveProfile();  // 커플 연결 중이면 공유분·알림 일정도 새 값으로 밀린다 — 의도된 동작.
+  // 완료 표시도 서버에 다시 민다 — 안 밀면 배우자 화면만 예전 상태로 남는다(32차).
+  if (SUPA && sync.coupleId) pushAllMarks();
   backupPending = null; backupMsg = '백업을 적용했습니다.';
   render();
 }
