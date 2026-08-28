@@ -2234,6 +2234,12 @@ function loadCouple() {
     .then(function (r) {
       if (r.error) { onSyncFail(); return; }
       sync.coupleId = (r.data && r.data.couple_id) || null;
+      // 서버가 답한 순간, 이 기기의 로컬 연결 표식은 의미를 잃는다 — linkedAt 은
+      // '서버 없이 이어졌다'는 뜻이고 이 사용자에게는 서버가 있다(로컬 코드 UI 도
+      // 비로그인일 때만 나온다). 34차 이전 서버 조인은 이 표식을 함께 찍었는데,
+      // 남겨 두면 로그아웃하거나 상대가 먼저 나갔을 때 없는 관계가 내 화면에만
+      // 남는다(35차 재현). 서버가 말을 못 한 경우(오류)에는 손대지 않는다.
+      if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
       if (!sync.coupleId) { sync.partnerName = null; sync.partnerMarks = {}; render(); return; }
       return refreshCouple();
     }, onSyncFail);
