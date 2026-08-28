@@ -2165,9 +2165,11 @@ function applyShared(o) {
   saveProfile();
 }
 
-/** 로컬 초대 코드로 연결 — linkedAt 은 '서버 없이 이 기기에서 이어졌다'는
-    상태 표시다. 서버 커플은 이 표식을 쓰지 않는다(진실은 서버의 couple_id
-    하나뿐): 겹쳐 찍으면 상대가 먼저 나갔을 때 내 화면에만 관계가 남는다(34차). */
+/** 로컬 초대 코드를 받아 적용한다 — linkedAt 은 '이 날 배우자 정보를 한 번
+    받아 왔다'는 과거 기록이다(내 정보 시트에 그렇게 적힌다). 현재 관계의
+    근거로는 쓰지 않는다: 이 코드는 프로필을 한 번 건네줄 뿐이고, 코드를 만든
+    쪽에는 표식이 남지 않아 같은 부부가 서로 다른 둥지를 보게 된다(36차).
+    서버 커플도 이 표식을 찍지 않는다 — 진실은 서버 쪽 하나뿐이다(34차). */
 function applyInvite(o) {
   applyShared(o);
   profile.linkedAt = ENG.fmtDate(TODAY);
@@ -2184,7 +2186,11 @@ function applyInvite(o) {
 var SUPA_URL = 'https://adagxaeirzkujskqjnnm.supabase.co';
 var SUPA_KEY = 'sb_publishable_YO9079BHO-1bLx7iKrdG0A_nwIL0Mxn'; /* 공개용 키 — 브라우저 노출 전제 */
 var SUPA = null;
+/* partnerLinked — '이 커플에 상대가 실제로 있다'는 확인된 사실(둥지의 두 번째 콩
+   근거). coupleId 와 구분한다: create_invite 는 상대가 오기 전에 이미 내
+   couple_id 를 채우므로 coupleId 만으로는 상대의 존재를 말할 수 없다(36차). */
 var sync = { user: null, nickname: null, coupleId: null, partnerName: null,
+             partnerLinked: false,
              partnerMarks: {}, mode: null, code: null, err: null, msg: null };
 
 function syncNickname(u) {
@@ -2199,7 +2205,7 @@ function initSync() {
     var u = session ? session.user : null;
     var was = sync.user ? sync.user.id : null;
     sync.user = u; sync.nickname = u ? syncNickname(u) : null;
-    if (!u) { sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; }
+    if (!u) { sync.coupleId = null; sync.partnerName = null; sync.partnerLinked = false; sync.partnerMarks = {}; }
     if (u && u.id !== was) {
       // 이 콜백 안에서 다른 supabase 호출을 직접 하면 인증 잠금과 교착해
       // 조용히 실패한다(실측: 로그인 직후 profiles 행이 안 생겼다) — 밖으로 뺀다.
@@ -2234,13 +2240,12 @@ function loadCouple() {
     .then(function (r) {
       if (r.error) { onSyncFail(); return; }
       sync.coupleId = (r.data && r.data.couple_id) || null;
-      // 서버가 답한 순간, 이 기기의 로컬 연결 표식은 의미를 잃는다 — linkedAt 은
-      // '서버 없이 이어졌다'는 뜻이고 이 사용자에게는 서버가 있다(로컬 코드 UI 도
-      // 비로그인일 때만 나온다). 34차 이전 서버 조인은 이 표식을 함께 찍었는데,
-      // 남겨 두면 로그아웃하거나 상대가 먼저 나갔을 때 없는 관계가 내 화면에만
-      // 남는다(35차 재현). 서버가 말을 못 한 경우(오류)에는 손대지 않는다.
+      // 로컬 전달 기록은 비로그인 사용자에게만 쓰이는 표식이다(그 안내 문구도
+      // 비로그인일 때만 나온다). 서버가 답한 사용자에게는 남길 이유가 없어
+      // 정리한다 — 34차 이전 서버 조인이 함께 찍어 둔 잔재도 여기서 걷힌다.
+      // 서버가 말을 못 한 경우(오류)에는 손대지 않는다.
       if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
-      if (!sync.coupleId) { sync.partnerName = null; sync.partnerMarks = {}; render(); return; }
+      if (!sync.coupleId) { sync.partnerName = null; sync.partnerLinked = false; sync.partnerMarks = {}; render(); return; }
       return refreshCouple();
     }, onSyncFail);
 }
@@ -2258,6 +2263,9 @@ function refreshCouple() {
   return Promise.all([pPartner, pMarks]).then(function (rs) {
     if (!sync.user || sync.coupleId !== cid) return;
     var partner = (rs[0].data && rs[0].data[0]) || null;
+    // 상대의 '행이 있는가'가 존재의 근거다 — 닉네임 유무로 판단하면 join 직후
+    // 닉네임이 아직 안 채워진 짧은 구간에 상대를 없다고 오판한다(36차 조사).
+    sync.partnerLinked = !!partner;
     sync.partnerName = partner ? partner.nickname : null;
     var marks = {};
     (rs[1].data || []).forEach(function (m) {
@@ -2466,7 +2474,7 @@ function svLeave() {
   SUPA.rpc('leave_couple').then(function (r) {
     sync.msg = null; sync.confirm = null;
     if (r.error) { sync.err = '해제하지 못했습니다. 잠시 후 다시 시도해 주세요.'; render(); return; }
-    sync.coupleId = null; sync.partnerName = null; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    sync.coupleId = null; sync.partnerName = null; sync.partnerLinked = false; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
     // 로컬 초대 연결 표식도 함께 정리 — 해제했는데 둥지에 콩이 둘 남으면 거짓이다(32차).
     if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
@@ -2488,7 +2496,7 @@ function svDelete() {
     pushEndpoint = null;
     SUPA.auth.signOut().then(function () {}, function () {});
     sync.user = null; sync.nickname = null; sync.coupleId = null; sync.partnerName = null;
-    sync.partnerMarks = {}; sync.code = null; sync.mode = null;
+    sync.partnerLinked = false; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
     if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
   });
@@ -3760,7 +3768,14 @@ function currentNest() {
   for (k in done) family[k] = done[k];
   for (k in sync.partnerMarks) family[k] = sync.partnerMarks[k];
   return APPLOGIC.nestState({
-    coupled: !!(sync.coupleId || profile.linkedAt),
+    // 두 번째 콩은 "지금 이 둥지에 배우자가 있다"는 말이다 — 확인된 것만 말한다(36차).
+    // 확인 가능한 유일한 신호는 서버 커플에 상대의 행이 실제로 있는 것이다.
+    // couple_id 만으로는 부족하다: create_invite 는 상대가 오기 전에 이미 내
+    // couple_id 를 채운다(코드만 만든 사람에게 콩 2개가 그려졌다).
+    // 로컬 초대(linkedAt)도 근거가 못 된다 — 프로필을 한 번 건네받은 과거 기록일
+    // 뿐이고(앱 문구도 "한 번 넘겨줍니다"), 코드를 만든 쪽에는 아예 남지 않아
+    // 같은 부부가 서로 다른 둥지를 본다. 과거 사실은 현재 상태가 아니다(34차).
+    coupled: !!sync.partnerLinked,
     doneIds: family
   });
 }
