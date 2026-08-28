@@ -2000,10 +2000,11 @@ function nestState(a) {
   const keys = Object.keys(doneIds);
   return {
     couple: !!a.coupled,
-    // 첫 걸음: 신청(apply_)도 하위 준비물(본체id/하위id)도 아닌 본체 완료 1건 이상.
-    // '첫 준비'라 부르지 않는다 — 출생신고(행정) 하나만 완료한 사용자에게
-    // '준비'는 과대 서술이었다(32차). 어떤 완료든 여정의 첫 걸음인 것은 정확하다.
-    firstStep: keys.some((k) => k.indexOf('apply_') !== 0 && k.indexOf('/') < 0),
+    // 첫 걸음: 하위 준비물(본체id/하위id)이 아닌 완료 1건 이상 — 신청도 포함한다.
+    // '첫 준비'라 부르지 않으며(출생신고만 한 사용자에게 '준비'는 과대 — 32차),
+    // 정의는 카피 그대로 '여정의 첫 걸음'이다: 신청만 한 사용자도 첫 걸음을
+    // 뗀 것이 사실이므로 제외하지 않는다(33차 — 코드와 문구의 일치).
+    firstStep: keys.some((k) => k.indexOf('/') < 0),
     apply: keys.some((k) => k.indexOf('apply_') === 0),
     bag: !!doneIds['birth_bag_prepare'],
     // 여정 후반(출산 후~첫돌)의 추억 — v3.1(32차). 전 가정 보편(GOOD) 항목만:
@@ -2249,14 +2250,13 @@ function pushMark(id, on) {
   }
 }
 
-/* 커플이 막 이어졌을 때 — 지금까지의 내 완료 기록을 한 번에 올린다. */
+/* 내 공유 완료를 로컬과 정확히 일치시킨다 — 커플 연결 직후·백업 복원 공용.
+   upsert 만으로는 '서버에 있고 로컬에 없는' 옛 완료가 남고, 빈 백업이면
+   아무것도 하지 않았다(33차 재현) — 서버 RPC 가 원자적으로 맞춘다.
+   배우자 몫은 함수가 by_user = auth.uid() 로 격리해 절대 건드리지 않는다. */
 function pushAllMarks() {
   if (!SUPA || !sync.user || !sync.coupleId) return Promise.resolve();
-  var rows = Object.keys(done).map(function (id) {
-    return { couple_id: sync.coupleId, item_id: id, by_user: sync.user.id };
-  });
-  if (!rows.length) return Promise.resolve();
-  return SUPA.from('done_marks').upsert(rows).then(syncDone, onSyncFail);
+  return SUPA.rpc('replace_my_marks', { items: Object.keys(done) }).then(syncDone, onSyncFail);
 }
 
 function sharedPayload() {
@@ -3740,11 +3740,13 @@ function nestCardHtml() {
   // v3 달성 누적형(31차) — 해낸 조각만 나열한다. 미완료 칩·진행 바·N/N 없음:
   // '해당 없음'이 '못함'처럼 보이는 길을 구조로 막는다. 커플은 조각이 아니라
   // 구성원(그림의 콩 수)이라 칩에 세지 않는다 — 콩 하나여도 완전한 둥지다.
+  // 칩은 '완료'라는 말 없이 사실만 — '첫 검진·접종 완료'는 접종 하나만 한
+  // 사용자에게 검진까지 마친 듯 읽혔다(33차). 범주 이름 + ✓ 로 과장을 없앤다.
   var got = [['firstStep', '첫 걸음'], ['apply', '첫 신청'], ['bag', '출산가방'],
-    ['docs', '아기 맞이 서류'], ['care', '첫 검진·접종']]
+    ['docs', '아기 맞이 서류'], ['care', '아기 건강 돌봄']]
     .filter(function (c) { return ns[c[0]]; });
   var chips = got.map(function (c) {
-    return '<div class="nest-chip on">' + c[1] + '<b>완료 ✓</b></div>';
+    return '<div class="nest-chip on">' + c[1] + '<b>✓</b></div>';
   }).join('');
   return '<div class="nest">' +
     '<h3>우리 가족의 둥지</h3>' +
