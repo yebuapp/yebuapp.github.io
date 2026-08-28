@@ -221,6 +221,8 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .kv-note { font-size: 13px; line-height: 1.6; color: var(--sub); max-width: 210px; }
 .kv-value small { font-size: 13px; font-weight: 400; color: var(--sub); margin-left: 2px; }
 .hero-note { font-size: 14px; font-weight: 400; line-height: 1.7; color: var(--sub); }
+/* 금액을 아직 모를 때 그 자리에 서는 문장 — 숫자만큼의 무게를 갖되 숫자인 척은 하지 않는다. */
+.hero-say { font-size: 21px; font-weight: 700; line-height: 1.4; letter-spacing: -0.02em; }
 /* 박스형 D-day — 확정 시트의 '출산까지 D-N'. 면 채움은 장식 전용 accent-tint */
 .dbox { margin-left: auto; flex-shrink: 0; background: var(--accent-tint); border-radius: 14px; padding: 10px 16px 11px; text-align: center; }
 .dbox-label { font-size: 12px; font-weight: 500; color: var(--sub); }
@@ -529,28 +531,22 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   font-size: 16px; font-weight: 500; color: var(--sub);
 }
 .seg button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-/* 스위치 자체는 30px 이라 손가락 기준(44px)에 못 미친다.
-   행 전체를 누를 수 있게 만들어 히트 영역을 52px 로 넓힌다. */
-.switchrow {
-  display: flex; align-items: center; gap: 12px;
-  min-height: 52px; border-bottom: 1px solid var(--hair);
-  width: 100%; text-align: left; padding: 0;
-  background: none; border-left: 0; border-right: 0; border-top: 0;
-  font-family: inherit; color: inherit;
+/* 첫 실행 짧은 시트 — 무엇을 해 주는 앱인지 한 번은 말하고 묻는다. */
+.quicklead {
+  background: var(--accent-soft); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.6;
 }
-.switchrow > span:first-child { font-size: 16px; font-weight: 500; }
-.sw {
-  margin-left: auto; width: 50px; height: 30px; flex-shrink: 0;
-  border-radius: 999px; background: var(--line); position: relative;
-  transition: background .16s; display: block;
+.quicklead .quicksub { display: inline-block; margin-top: 6px; color: var(--sub); font-size: 13px; }
+.quickdone {
+  display: block; width: 100%; margin-top: 6px; padding: 15px;
+  border: 0; border-radius: 11px; background: var(--accent); color: var(--on-accent);
+  font-family: inherit; font-size: 16px; font-weight: 700;
 }
-.sw::after {
-  content: ''; position: absolute; top: 3px; left: 3px;
-  width: 24px; height: 24px; border-radius: 999px; background: #fff;
-  transition: transform .16s;
+.quickmore {
+  display: block; width: 100%; margin-top: 8px; padding: 13px;
+  border: 1.5px solid var(--line); border-radius: 11px; background: var(--surface);
+  font-family: inherit; font-size: 14px; font-weight: 500; color: var(--sub);
 }
-.sw.on { background: var(--accent); }
-.sw.on::after { transform: translateX(20px); }
 
 /* 바로가기 — 신청처·원문으로 한 번에 넘어간다.
    상세를 펼쳐야만 링크가 보이면 아무도 원문을 확인하지 않는다. */
@@ -1842,7 +1838,7 @@ function sharedPayload(profile) {
   return p;
 }
 
-/** v2·v3 마이그레이션 — 복사본을 돌려준다. changed 는 저장 필요 여부. */
+/** v2~v4 마이그레이션 — 복사본을 돌려준다. changed 는 저장 필요 여부. */
 function migrateProfile(p) {
   const out = { ...p };
   const before = JSON.stringify(out);
@@ -1868,6 +1864,15 @@ function migrateProfile(p) {
       out.sido = null; out.sigungu = null; out.residencyMonths = null;
     }
     out._v = 3;
+  }
+  // v4 마이그레이션 — 특수 조건 넷은 켜기만 되는 스위치라 '꺼짐'이 곧 기본값이었다.
+  // 아니라고 답한 적이 없으므로 v2 와 같은 기준으로 미입력으로 되돌린다. 되물으면
+  // 항목 안 질문 한 번으로 끝나지만, false 로 두면 한부모·청소년 산모·장애 산모의
+  // 제도가 물어본 적도 없이 '조건 불일치'로 사라진다(41차 실측: 남양주 5건).
+  if (!out._v || out._v < 4) {
+    ['isDisabledParent', 'isDisabledMother', 'isTeenMother', 'isSingleParent', 'isHighRiskPregnancy']
+      .forEach((k) => { if (out[k] === false) out[k] = null; });
+    out._v = 4;
   }
   const changed = before !== JSON.stringify(out);
   return { profile: out, changed: changed };
@@ -2110,10 +2115,15 @@ var profile = {
   // 않은 값으로 확정 판정이 조용히 나간다 — 모르는 것은 물어야 한다.
   employment: null, spouseEmployment: null,
   incomeBracket: null, householdIncomeAnnual: null,
-  isTeenMother: false, isDisabledMother: false, isDisabledParent: false, isPreterm: null,
+  // 특수 조건도 미입력(null)이 기본이다. false 를 박아 두면 '아직 안 물어봤다'가
+  // '아니라고 답했다'로 둔갑해, 한부모·청소년 산모·장애 산모의 제도가 '조건
+  // 불일치'로 조용히 접힌다 — 물어본 적이 없는데도. (41차 실측: 남양주 기준
+  // 5건·전국 requires 20건. 시트 하단이 이미 "빈 칸을 해당 없음으로 치지
+  // 않는다"고 약속하고 있는데 이 넷만 그 약속 밖에 있었다.)
+  isTeenMother: null, isDisabledMother: null, isDisabledParent: null, isPreterm: null,
   isRhNegative: false, isFixedTerm: null, isRemoteBirthArea: null,
   localCurrencyOption: false, isCongenitalAnomaly: null, isUninsuredEmployee: null,
-  isSingleParent: false, isHighRiskPregnancy: false, dualIncome: null, lossMode: false
+  isSingleParent: null, isHighRiskPregnancy: null, dualIncome: null, lossMode: false
 };
 // 처음 연 사람인가 — 저장된 프로필이 없으면 '내 정보'를 먼저 받는다.
 // 기본값(서울 강남구)이 무엇이든, 확인 안 받은 지역으로 시작하게 두지 않는다.
@@ -3379,6 +3389,11 @@ var FIELD_ASK = {
   employment:          { q: '나의 일자리는 어느 쪽인가요?', opts: ASK_EMP },
   spouseEmployment:    { q: '배우자의 일자리는 어느 쪽인가요?', opts: ASK_EMP },
   isDisabledMother:    { q: '산모 본인이 등록 장애인인가요?', opts: ASK_YESNO },
+  isDisabledParent:    { q: '아기의 부 또는 모가 등록 장애인인가요?', opts: ASK_YESNO },
+  isSingleParent:      { q: '한부모 가족인가요?', opts: ASK_YESNO },
+  // 데이터의 대상 정의를 그대로 옮긴다 — '고위험 임신입니다' 는 자가 판단을
+  // 부르지만, 제도가 요구하는 것은 진단·입원 사실이다.
+  isHighRiskPregnancy: { q: '고위험 임신 질환으로 입원 치료를 받으셨나요?', opts: ASK_YESNO },
   isPreterm:           { q: '아기가 미숙아(이른둥이)로 태어났나요?', opts: ASK_YESNO },
   isCongenitalAnomaly: { q: '아기에게 선천성 이상 진단이 있나요?', opts: ASK_YESNO },
   isUninsuredEmployee: { q: '일은 하지만 고용보험에는 가입돼 있지 않은가요?', opts: ASK_YESNO },
@@ -3408,7 +3423,11 @@ var FIELD_LABEL = {
 var SHEET_FIELD_LABEL = {
   incomeBracket: '가구 소득 구간', sido: '시·도', sigungu: '시·군·구',
   birthDate: '아이 생일', dueDate: '출산 예정일', fetusCount: '태아 수',
-  childrenBefore: '자녀 수', residencyMonths: '거주 기간', stage: '단계'
+  childrenBefore: '자녀 수', residencyMonths: '거주 기간', stage: '단계',
+  // 청소년 산모는 제도마다 기준 나이가 다르다(의료비 만 19세 이하 / 청소년
+  // 한부모 24세 이하). 한 줄짜리 질문으로 옮기면 어느 쪽이든 틀리므로,
+  // 두 기준을 함께 적어 둔 내 정보에서 받는다.
+  isTeenMother: '청소년 산모 여부'
 };
 
 function askBlock(r) {
@@ -3554,9 +3573,15 @@ function buildShareText() {
   var lines = [];
   var rg = profile.sigungu || profile.sido;
   lines.push('예부 — ' + (rg ? rg + ' ' : '') + '출산 준비 혜택 확인');
-  lines.push('확인된 제도 ' + EV.counts.confirmed + '건, 합계 ' +
-    Math.round(EV.total / 10000).toLocaleString('ko-KR') + '만원');
-  if (EV.needsInput.length) lines.push('정보를 더 넣으면 판단되는 제도 ' + EV.needsInput.length + '건');
+  // 아직 계산하지 못한 상태를 '합계 0만원'으로 내보내면, 받는 사람에게는
+  // '이 사람은 받을 게 없다'로 읽힌다. 화면과 같은 기준으로 말한다.
+  if (EV.total > 0) {
+    lines.push('확인된 제도 ' + EV.counts.confirmed + '건, 합계 ' +
+      Math.round(EV.total / 10000).toLocaleString('ko-KR') + '만원');
+  } else {
+    lines.push('아직 계산 전입니다 — 조건을 넣으면 우리 동네 기준으로 계산됩니다');
+  }
+  if (needAskable().length) lines.push('정보를 더 넣으면 판단되는 제도 ' + needAskable().length + '건');
   lines.push('https://yebuapp.github.io/');
   return lines.join('\n');
 }
@@ -3681,7 +3706,7 @@ function openCard(kind) {
   } else {
     d = APPLOGIC.benefitCardData({
       region: profile.sigungu || profile.sido || null,
-      confirmedCount: EV.counts.confirmed, totalWon: EV.total, needsInputCount: EV.needsInput.length
+      confirmedCount: EV.counts.confirmed, totalWon: EV.total, needsInputCount: needAskable().length
     });
     d.nest = currentNest();  // 혜택 카드에도 같은 둥지 — 두 카드가 같은 얼굴을 갖는다.
   }
@@ -3885,14 +3910,74 @@ function backupApply() {
   render();
 }
 
-function viewMoney() {
-  var h = '<div class="hero" style="padding-bottom:10px"><div class="hero-row">' +
-    '<div class="hero-side" style="gap:6px"><div class="kv-label">확인된 제도만 더한 금액</div>' +
-    '<div class="big">' + Math.round(EV.total / 10000).toLocaleString('ko-KR') +
-    '<span class="big-unit">만원</span></div>' +
-    '<div style="margin-top:2px;display:flex;gap:8px"><button class="askbtn" id="shareBtn" data-share="money">요약 공유</button>' +
+/* 지금 물어볼 수 있는 서로 다른 입력의 개수.
+   '판단 보류 69건'은 제도 수이지 질문 수가 아니다 — 그 69건이 실제로는 열 개
+   남짓의 같은 입력을 기다린다. 제도 수를 질문 수인 양 내보내면 답할 수 있는
+   양을 열 배로 부풀려 말하게 된다(41차 실측: 입력 0에서 69건 ↔ 입력 10개). */
+function openQuestions() {
+  var s = {};
+  needAskable().forEach(function (r) {
+    (r.missingFields || []).forEach(function (f) {
+      if (FIELD_ASK[f] || SHEET_FIELD_LABEL[f]) s[f] = 1;
+    });
+  });
+  return Object.keys(s).length;
+}
+/* 사용자가 답해서 실제로 풀리는 보류만. 부족한 값이 없는 보류는 우리 데이터가
+   비어 있는 것이라, 그것까지 세어 '답하면 N건이 풀린다'고 말하면 과잉 주장이 된다. */
+function needAskable() {
+  return EV.needsInput.filter(function (r) { return (r.missingFields || []).length > 0; });
+}
+/* 혜택 히어로 — 아직 모르는 금액을 0원이라고 말하지 않는다.
+   '0만원'과 '아직 계산하지 못했다'는 완전히 다른 사실인데 같은 숫자로 나갔다.
+   엔진은 이미 여섯 갈래를 구분하고 있었고(확정>0 / 지역 미입력 / 정보 부족 /
+   금액 환산 불가 / 아직 내 단계 아님 / 진짜 0), 화면만 그것을 뭉개고 있었다. */
+function moneyHeroHtml() {
+  var noRegion = profile.sido == null || profile.sigungu == null;
+  var q = openQuestions();
+  var needN = needAskable().length;
+  var noAmt = EV.conditional.filter(function (r) { return r.status !== 'future' && r.amount.value == null; }).length;
+  var futureN = EV.conditional.filter(function (r) { return r.status === 'future'; }).length;
+  var head, body, note = '';
+  if (EV.total > 0) {
+    head = '확인된 제도만 더한 금액';
+    body = '<div class="big">' + Math.round(EV.total / 10000).toLocaleString('ko-KR') +
+      '<span class="big-unit">만원</span></div>';
+    // 지역이 없으면 남은 보류 건수를 말하지 않는다 — 전국 모든 지자체 제도가
+    // 섞여 들어가 '284건'처럼 답할 수 없는 수가 된다.
+    if (noRegion) note = '여기까지는 <b>전국 공통 제도</b>만 더한 금액입니다. 지역을 알려주시면 우리 동네 제도까지 계산합니다.';
+    else if (q > 0) note = '<b>' + q + '가지</b>를 더 알려주시면 판단을 미뤄 둔 ' + needN + '건까지 계산합니다.';
+  } else if (noRegion) {
+    head = '아직 계산하지 않았습니다';
+    body = '<div class="hero-say">지역을 알려주시면<br>우리 동네 금액부터 계산합니다</div>';
+    note = '전국 공통 제도는 지역과 상관없이 아래에 이미 있습니다.';
+  } else if (needN > 0 && q > 0) {
+    head = '아직 계산하지 않았습니다';
+    body = '<div class="hero-say"><b>' + q + '가지</b>만 더 알려주시면<br>' + needN + '건을 판단할 수 있습니다</div>';
+    note = '모른다고 해서 해당 없음으로 접지 않습니다. 아래 항목을 열면 그 자리에서 답할 수 있습니다.';
+  } else if (noAmt > 0) {
+    head = '금액으로 환산할 수 없는 혜택만 있습니다';
+    body = '<div class="hero-say">' + noAmt + '가지</div>';
+    note = '무료 진료·현물처럼 금액을 매길 수 없는 것입니다. 합계에 넣지 않습니다.';
+  } else if (futureN > 0) {
+    head = '지금 단계에 해당하는 금액 제도가 없습니다';
+    body = '<div class="hero-say">출산 후 ' + futureN + '건이 기다립니다</div>';
+    note = '단계가 되면 위쪽으로 올라옵니다.';
+  } else {
+    head = '확인된 제도만 더한 금액';
+    body = '<div class="big">0<span class="big-unit">만원</span></div>';
+    note = '빠진 정보 없이 계산한 결과입니다 — 지금 조건에 맞는 금액 제도가 없습니다.';
+  }
+  return '<div class="hero" style="padding-bottom:10px"><div class="hero-row">' +
+    '<div class="hero-side" style="gap:6px"><div class="kv-label">' + head + '</div>' + body +
+    (note ? '<div class="hero-note" style="margin-top:2px">' + note + '</div>' : '') +
+    '<div style="margin-top:6px;display:flex;gap:8px"><button class="askbtn" id="shareBtn" data-share="money">요약 공유</button>' +
     '<button class="askbtn" data-sharecard="money">카드로 공유</button></div>' +
     '</div></div></div>';
+}
+
+function viewMoney() {
+  var h = moneyHeroHtml();
   h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>지금 확정된 것</h3><span class="count">' + EV.counts.confirmed + '</span></div>' +
     (EV.confirmed.length ? EV.confirmed.map(function (r) { return moneyRow(r, true); }).join('')
       : '<div class="empty" style="padding:20px 0">아직 확정된 제도가 없습니다.</div>') + '</div>';
@@ -3905,8 +3990,16 @@ function viewMoney() {
     '지금 해당하지만 금액을 합계에 넣지 못한 제도입니다. 상한액만 있거나, 현물·무료 진료처럼 금액으로 환산할 수 없거나, 저희가 원문으로 확인하지 못한 것입니다. 이유는 항목마다 적어 두었습니다.');
   h += moneySection('condLater', '아직 내 차례가 아닙니다', condLater, true,
     '출산 후에 해당하는 제도입니다. 지금은 신청할 수 없고, 단계가 되면 위쪽으로 올라옵니다.');
-  h += moneySection('need', '정보를 더 주시면 판단할 수 있습니다', EV.needsInput, false,
+  // 같은 '판단 보류'라도 공이 누구에게 있는지가 다르다. 열어도 물어볼 것이 없는
+  // 항목을 '정보를 더 주시면'에 두면, 사용자는 무엇을 더 주라는 건지 알 수 없다.
+  // 그 넷은 지역이 특정되지 않은 제도라, 모자란 것은 사용자 입력이 아니라 우리 데이터다.
+  var needAsk = needAskable();
+  var needOurs = EV.needsInput.filter(function (r) { return (r.missingFields || []).length === 0; });
+  h += moneySection('need', '정보를 더 주시면 판단할 수 있습니다', needAsk, false,
     '조건 하나를 몰라 판단을 보류한 제도입니다. 모른다고 해서 해당 없음으로 접지 않습니다. 항목을 열면 부족한 값을 그 자리에서 입력할 수 있습니다.');
+  h += moneySection('needOurs', '저희가 아직 확인하지 못했습니다', needOurs, false,
+    '지자체에 따라 있을 수 있는 제도인데, 저희가 이 지역의 시행 여부와 금액을 원문으로 확인하지 못했습니다. ' +
+    '넣어 드릴 정보가 사용자 쪽에 있는 것이 아니라 저희 쪽이 비어 있는 것이라 따로 둡니다 — 확인되는 대로 위로 올라옵니다.');
 
   /* 한 번에 신청 — 만들어 두고 안 꺼냈던 통합신청 묶음(행복출산 등) */
   var OS = ENG.onestopFor(ONESTOP, EV);
@@ -3986,20 +4079,55 @@ function chgRow(c) {
   return s;
 }
 
-/* ── 내 정보 시트 ──────────────────────────────────────────────────────── */
+/* ── 내 정보 시트 ────────────────────────────────────────────────────────
+   특수 조건은 켜기만 되는 스위치가 아니라 세 갈래다 — 예 / 아니오 / 아직 안 물음.
+   스위치는 '꺼짐'과 '안 물어봄'을 같은 모양으로 만들어, 물어본 적 없는 사람을
+   조용히 '해당 없음'으로 접었다. 시트 하단이 이미 "빈 칸을 해당 없음으로 치지
+   않는다"고 약속하고 있으니, 이 넷도 그 약속 안으로 들인다(41차). */
+var TRI_FIELDS = [
+  ['isDisabledParent', '부 또는 모가 등록 장애인입니다', null],
+  ['isTeenMother', '청소년 산모입니다',
+    '제도마다 기준 나이가 다릅니다 — 의료비 지원은 만 19세 이하, 청소년 한부모 지원은 24세 이하입니다.'],
+  ['isSingleParent', '한부모 가족입니다', null],
+  ['isHighRiskPregnancy', '고위험 임신 질환으로 입원 치료를 받았습니다',
+    '19개 고위험 임신질환으로 입원치료를 받은 경우가 지원 대상입니다.']
+];
+function triField(o) {
+  var v = profile[o[0]];
+  return '<div class="field"><label>' + o[1] + '</label><div class="seg" role="group">' +
+    [['true', '예'], ['false', '아니오'], ['', '아직 모름']].map(function (x) {
+      var on = x[0] === '' ? v == null : String(v) === x[0];
+      return '<button data-tri="' + esc(o[0]) + '" data-val="' + x[0] + '"' +
+        (on ? ' class="on"' : '') + ' aria-pressed="' + (on ? 'true' : 'false') + '">' + x[1] + '</button>';
+    }).join('') + '</div>' +
+    (o[2] ? '<div class="fieldnote">' + o[2] + '</div>' : '') + '</div>';
+}
+
 var sheetOpen = FIRST_RUN ? 'me' : false; /* false | 'me' | 'sos' | 'search' */
+/* 첫 실행은 판정에 실제로 쓰이는 일곱(역할·단계·날짜·시도·시군구·태아 수·자녀 수)만
+   받는다 — 나머지는 '자세히'와 항목 안 질문으로. 41차 실측: 이 일곱으로 완전
+   프로필과 같은 금액에 닿는다(남양주 기준 1,670만원, 열아홉 필드와 동일). */
+var sheetExpanded = false;
 var inviteMode = null;  /* null | 'show' | 'enter' */
 var searchQuery = '';
 var inviteError = null;
 function sheetHtml() {
   var sgs = (SIGUNGU.bySido && SIGUNGU.bySido[profile.sido]) || [];
+  // 첫 실행은 판정에 실제로 쓰이는 일곱 가지만 받는다. 나머지를 여기서 다 물으면
+  // 스크롤 세 화면짜리 폼이 앱이 해 줄 일을 가려 버린다 — 그것도 아직 아무 결과를
+  // 보여주기 전에. 남은 것들은 그 값이 필요한 항목 안에서 그 자리에 묻는다.
+  var quick = FIRST_RUN && !sheetExpanded;
   var f = '';
+  if (quick) {
+    f += '<div class="quicklead"><b>우리 동네 기준으로 받을 지원금과 신청 기한</b>을 정리해 드립니다.<br>' +
+      '<span class="quicksub">일곱 가지만 알려주시면 시작됩니다 — 나머지는 필요할 때 그 자리에서 여쭙니다.</span></div>';
+  }
   f += '<div class="field"><label>나는 누구인가요</label><div class="seg">' +
     [['mother', '엄마'], ['partner', '아빠']].map(function (o) {
       return '<button data-set="role" data-val="' + o[0] + '"' + (profile.role === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
     }).join('') + '</div>' +
-    '<div class="fieldnote">고른 쪽에 맞춰 &lsquo;내가 할 일&rsquo;과 &lsquo;배우자가 할 일&rsquo;이 나뉩니다. ' +
-    '상대 몫은 볼 수는 있지만 대신 체크할 수는 없습니다.</div></div>';
+    '<div class="fieldnote">고른 쪽에 맞춰 &lsquo;내가 할 일&rsquo;과 &lsquo;배우자가 할 일&rsquo;이 나뉩니다.' +
+    (quick ? '' : ' 상대 몫은 볼 수는 있지만 대신 체크할 수는 없습니다.') + '</div></div>';
   f += '<div class="field"><label>지금 어느 단계인가요</label><div class="seg">' +
     [['preparing', '준비 중'], ['pregnant', '임신 중'], ['postpartum', '출산 후']].map(function (o) {
       return '<button data-set="stage" data-val="' + o[0] + '"' + (profile.stage === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
@@ -4017,22 +4145,24 @@ function sheetHtml() {
     '<option value="">선택 안 함</option>' +
     sgs.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sigungu === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
     '</select></div>';
-  f += '<div class="field"><label>이 지역에 산 기간 (개월)</label><input type="number" inputmode="numeric" min="0" max="600" data-set="residencyMonths" value="' + (profile.residencyMonths == null ? '' : profile.residencyMonths) + '"></div>';
   f += '<div class="field"><label>이번 출산 전 자녀 수</label><input type="number" inputmode="numeric" min="0" max="10" data-set="childrenBefore" value="' + (profile.childrenBefore == null ? '' : profile.childrenBefore) + '"></div>';
   f += '<div class="field"><label>이번에 태어날 아기 수</label><input type="number" inputmode="numeric" min="1" max="5" data-set="fetusCount" value="' + (profile.fetusCount == null ? '' : profile.fetusCount) + '"></div>';
+  if (quick) {
+    // 첫 실행은 여기서 끝난다. 남은 값은 그 값이 필요한 항목이 스스로 묻는다.
+    return sheetShell(f +
+      '<button class="quickdone" data-closesheet="1">이대로 시작하기</button>' +
+      '<button class="quickmore" data-sheetall="1">자세히 입력하기 — 거주 기간·소득·특수 조건</button>' +
+      '<div class="foot" style="border-top:0;padding:10px 0 0">모르는 항목은 비워 두세요 — ' +
+      '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않습니다.</div>');
+  }
+  f += '<div class="field"><label>이 지역에 산 기간 (개월)</label><input type="number" inputmode="numeric" min="0" max="600" data-set="residencyMonths" value="' + (profile.residencyMonths == null ? '' : profile.residencyMonths) + '"></div>';
   f += '<div class="field"><label>기준중위소득 대비 가구 소득</label><select data-set="incomeBracket">' +
     [['', '모름 · 선택 안 함'], ['under80', '80% 이하'], ['under100', '100% 이하'], ['under150', '150% 이하'], ['over150', '150% 초과']].map(function (o) {
       return '<option value="' + o[0] + '"' + ((profile.incomeBracket || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('') + '</select>' +
     '<div class="fieldnote">기준중위소득은 정부가 복지 지원 대상을 정할 때 쓰는 가구 소득 기준입니다. ' +
     '모르면 <b>모름</b>으로 두세요 — 소득이 필요한 제도는 &lsquo;정보를 더 주시면&rsquo;으로 따로 보여 드립니다.</div></div>';
-  [['isDisabledParent', '부 또는 모가 등록장애인입니다'],
-   ['isTeenMother', '청소년 산모입니다'],
-   ['isSingleParent', '한부모 가정입니다'],
-   ['isHighRiskPregnancy', '고위험 임신입니다']].forEach(function (o) {
-    f += '<button class="switchrow" data-toggle="' + o[0] + '" role="switch" aria-checked="' + (profile[o[0]] ? 'true' : 'false') + '">' +
-      '<span>' + o[1] + '</span><span class="sw' + (profile[o[0]] ? ' on' : '') + '" aria-hidden="true"></span></button>';
-  });
+  f += TRI_FIELDS.map(triField).join('');
 
   /* 부부 연결 */
   var linked = profile.linkedAt ? true : false;
@@ -4151,14 +4281,16 @@ function sheetHtml() {
     f += '</div>';
   }
 
+  return sheetShell(f +
+    '<div class="foot" style="border-top:0;padding-left:0;padding-right:0">모르는 항목은 비워 두세요. ' +
+    '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않고 &lsquo;판단할 수 없음&rsquo;으로 따로 보여드립니다.</div>');
+}
+function sheetShell(inner) {
   return '<div class="sheet-bg" data-closesheet="1"><div class="sheet" role="dialog" aria-label="내 정보">' +
     '<div class="grab"></div>' +
     '<div class="sheet-head"><h2>내 정보</h2>' +
     '<button class="iconbtn" data-closesheet="1" style="margin-left:auto" aria-label="닫기">' + ICON.close + '</button></div>' +
-    '<div class="sheet-body">' + f +
-    '<div class="foot" style="border-top:0;padding-left:0;padding-right:0">모르는 항목은 비워 두세요. ' +
-    '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않고 &lsquo;판단할 수 없음&rsquo;으로 따로 보여드립니다.</div>' +
-    '</div></div></div>';
+    '<div class="sheet-body">' + inner + '</div></div></div>';
 }
 
 /* ── '이럴 땐 병원' ─────────────────────────────────────────────────────
@@ -4451,7 +4583,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-toggle', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -4462,7 +4594,9 @@ document.addEventListener('click', function (e) {
   var t = e.target.closest(ACTIONS);
   if (!t) return;
   if (t.id === 'themeBtn') { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; applyTheme(theme); render(); return; }
-  if (t.id === 'meBtn') { sheetOpen = 'me'; render(); return; }
+  // 짧은 첫 실행 시트는 한 번뿐이다. 사용자가 스스로 '내 정보'를 다시 열었다면
+  // 그때는 설정 화면을 원하는 것이므로 전체를 보여준다.
+  if (t.id === 'meBtn') { sheetOpen = 'me'; sheetExpanded = true; render(); return; }
   if (t.id === 'sosBtn') { sheetOpen = 'sos'; render(); return; }
   if (t.id === 'searchBtn') { sheetOpen = 'search'; render(); focusSearch(); return; }
 
@@ -4577,7 +4711,12 @@ document.addEventListener('click', function (e) {
     return;
   }
   if (t.hasAttribute('data-tab')) { go(t.getAttribute('data-tab')); return; }
-  if (t.hasAttribute('data-sheet')) { sheetOpen = t.getAttribute('data-sheet'); render(); return; }
+  if (t.hasAttribute('data-sheet')) {
+    sheetOpen = t.getAttribute('data-sheet');
+    // 항목이 '내 정보에서 입력합니다'로 보낸 것이므로 짧은 시트로 받으면 안 된다.
+    if (sheetOpen === 'me') sheetExpanded = true;
+    render(); return;
+  }
   if (t.hasAttribute('data-iosclose')) { store('yebu.iosbanner', 'off'); render(); return; }
   if (t.hasAttribute('data-ask')) {
     // 인라인 질문 — 항목 상세 안에서 판단에 막힌 프로필 값을 그 자리에서 받는다.
@@ -4603,10 +4742,15 @@ document.addEventListener('click', function (e) {
     var sc2 = document.querySelector('.scroll'); if (sc2) sc2.scrollTop = y;
     return;
   }
-  if (t.hasAttribute('data-toggle')) {
-    var f = t.getAttribute('data-toggle'); profile[f] = !profile[f];
-    // 켜면 '산모 본인인지'를 인라인 질문으로 묻고(null), 끄면 파생값으로 확정(false).
-    if (f === 'isDisabledParent') profile.isDisabledMother = profile[f] ? null : false;
+  if (t.hasAttribute('data-sheetall')) { sheetExpanded = true; render(); return; }
+  if (t.hasAttribute('data-tri')) {
+    var tf = t.getAttribute('data-tri'), tv = t.getAttribute('data-val');
+    profile[tf] = tv === '' ? null : tv === 'true';
+    // 부모 중 장애인이 있다면 '산모 본인인지'는 따로 물어야 한다(금액이 다르다).
+    // 아니라고 답했으면 산모도 아닌 것이 확정이고, 모른다면 산모도 모르는 것이다.
+    if (tf === 'isDisabledParent') {
+      profile.isDisabledMother = profile[tf] === false ? false : null;
+    }
     saveProfile(); render(); return;
   }
   if (t.hasAttribute('data-set') && t.tagName === 'BUTTON') {
