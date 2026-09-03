@@ -4866,8 +4866,19 @@ function moneyHeroHtml() {
         // "더 계산됩니다"라고 하면 받는 돈처럼 읽힌다. 조건에 따라 0원일 수도 있는 금액이므로
         // 우리가 하는 일 그대로 적는다 — 판단이다.
         note = '<b>' + esc(FIELD_LABEL[unlock.field] || unlock.field) + '</b>만 알려주시면 ' +
-          unlock.n + '건(최대 <b>' + ENG.won(unlock.won) + '</b>)을 판단할 수 있습니다.' +
-          ' <button class="askbtn" data-ask="' + esc(unlock.field) + '">지금 알려주기</button>';
+          unlock.n + '건(최대 <b>' + ENG.won(unlock.won) + '</b>)을 판단할 수 있습니다.';
+        // 그 자리에서 답하게 한다. 고르는 질문이면 선택지를 펴고,
+        // 숫자로 답할 질문(거주 기간 같은)이면 내 정보로 데려간다 —
+        // data-ask 는 값을 함께 실어야 동작하므로 빈 버튼을 두면 눌러도 아무 일이 없다.
+        var ask = FIELD_ASK[unlock.field];
+        if (ask && ask.opts && ask.opts.length) {
+          note += '<div class="ask-q" style="margin-top:9px">' + esc(ask.q) + '</div><div class="ask-opts">' +
+            ask.opts.map(function (o) {
+              return '<button class="askbtn" data-ask="' + esc(unlock.field) + '" data-val="' + esc(o[1]) + '">' + esc(o[0]) + '</button>';
+            }).join('') + '</div>';
+        } else {
+          note += ' <button class="askbtn" data-sheet="me">내 정보에서 알려주기</button>';
+        }
       } else if (st.questionCount > 0) {
         note = '<b>' + st.questionCount + '가지</b>를 더 알려주시면 판단을 미뤄 둔 ' + st.needCount + '건까지 계산합니다.';
       }
