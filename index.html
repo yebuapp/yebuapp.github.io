@@ -4817,24 +4817,45 @@ function needAskable() {
    엔진은 이미 여섯 갈래를 구분하고 있었고(확정>0 / 지역 미입력 / 정보 부족 /
    금액 환산 불가 / 아직 내 단계 아님 / 진짜 0), 화면만 그것을 뭉개고 있었다. */
 /* 지금의 합계가 무엇을 뜻하는지 — 화면·요약 공유·카드가 모두 이 하나를 본다. */
-/** 지금 못 채운 항목 하나하나가 얼마를 열어 주는가.
-    '이것 하나만 모르는' 제도만 센다 — 두 가지를 모르는 제도는 하나를 채워도 열리지 않으므로
-    그것까지 세면 "이만큼 더 받는다"가 거짓이 된다. */
+/** 못 채운 항목 하나를 채우면 합계가 얼마나 늘어나는가 — 세지 않고 실제로 넣어 본다.
+    미리 세는 방식은 틀렸다. 고용 형태를 답하면 육아휴직 급여가 '해당됨'이 되지만
+    그제서야 육아휴직 종료일이 또 필요하다는 것이 드러나 합계에는 들어가지 않는다.
+    조건이 조건을 부르므로, 값을 넣고 엔진을 다시 돌려 실제 증가분을 재는 것이 정직하다.
+
+    가장 너그러운 값을 넣으므로 결과는 '최대'다 — 문구도 그렇게 적는다.
+    엔진 재계산은 0.8ms 이고 후보는 열 개 안쪽이라 렌더 한 번에 몇 ms 를 더 쓴다. */
+var UNLOCK_TRY = {
+  employment: '"employee"', spouseEmployment: '"employee"',
+  motherEmployment: '"employee"', partnerEmployment: '"employee"',
+  isDisabledParent: 'true', isDisabledMother: 'true', isSingleParent: 'true',
+  isHighRiskPregnancy: 'true', isPreterm: 'true', isUninsuredEmployee: 'true',
+  isMarriedCouple: 'true', dualIncome: 'true', isFixedTerm: 'true',
+  residencyMonths: '120', incomeBracket: '"low"'
+};
 function biggestUnlock() {
-  var by = {};
+  var want = {};
   (EV.results || []).forEach(function (r) {
-    if (r.status !== 'unknown') return;
-    var mf = r.missingFields || [];
-    if (mf.length !== 1) return;
-    if (!r.amount || r.amount.value == null) return;
-    var k = mf[0];
-    if (!by[k]) by[k] = { n: 0, won: 0 };
-    by[k].n += 1;
-    by[k].won += r.amount.value;
+    if (r.status !== 'unknown' && r.countsToward) return;
+    (r.missingFields || []).forEach(function (fld) { if (UNLOCK_TRY[fld] !== undefined) want[fld] = true; });
   });
+  var base = EV.total || 0;
   var best = null;
-  Object.keys(by).forEach(function (k) { if (!best || by[k].won > by[best].won) best = k; });
-  return best ? { field: best, n: by[best].n, won: by[best].won } : null;
+  Object.keys(want).forEach(function (fld) {
+    var v;
+    try { v = JSON.parse(UNLOCK_TRY[fld]); } catch (e) { return; }
+    var trial = {};
+    for (var k in profile) trial[k] = profile[k];
+    trial[fld] = v;
+    trial.dueDate = profile.stage === 'pregnant' ? profile.dueDate : null;
+    trial.birthDate = profile.stage === 'postpartum' ? profile.birthDate : null;
+    var res;
+    try { res = ENG.evaluate(trial, PROGRAMS, TODAY); } catch (e) { return; }
+    var gain = (res.total || 0) - base;
+    if (gain <= 0) return;
+    var n = (res.counts.confirmed || 0) - (EV.counts.confirmed || 0);
+    if (!best || gain > best.won) best = { field: fld, won: gain, n: n > 0 ? n : 1 };
+  });
+  return best;
 }
 
 function currentMoneyState() {
@@ -4866,7 +4887,7 @@ function moneyHeroHtml() {
         // "더 계산됩니다"라고 하면 받는 돈처럼 읽힌다. 조건에 따라 0원일 수도 있는 금액이므로
         // 우리가 하는 일 그대로 적는다 — 판단이다.
         note = '<b>' + esc(FIELD_LABEL[unlock.field] || unlock.field) + '</b>만 알려주시면 ' +
-          unlock.n + '건(최대 <b>' + ENG.won(unlock.won) + '</b>)을 판단할 수 있습니다.';
+          unlock.n + '건 · 최대 <b>' + ENG.won(unlock.won) + '</b>이 합계에 더해집니다.';
         // 그 자리에서 답하게 한다. 고르는 질문이면 선택지를 펴고,
         // 숫자로 답할 질문(거주 기간 같은)이면 내 정보로 데려간다 —
         // data-ask 는 값을 함께 실어야 동작하므로 빈 버튼을 두면 눌러도 아무 일이 없다.
