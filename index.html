@@ -5045,8 +5045,7 @@ function viewMoney() {
   h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>지금 확정된 것</h3><span class="count">' + EV.counts.confirmed + '</span></div>' +
     // 금액이 있는 제도 171건 가운데 100건이 조건에 따라 달라진다(거주 기간만 56건).
     // 이 사실은 맨 아래 각주가 아니라 숫자 바로 옆에 있어야 한다 — 각주는 아무도 읽지 않는다.
-    (EV.confirmed.length ? '<div class="secnote">금액은 <b>출생 순위·거주 기간·소득</b>에 따라 달라집니다. ' +
-      '여기 숫자는 지금 알려주신 정보로 계산한 것이고, 실제 지급액은 신청 시점의 예산과 지자체 확인에 따라 달라질 수 있습니다. ' +
+    (EV.confirmed.length ? '<div class="secnote">금액은 <b>출생 순위·거주 기간·소득</b>과 신청 시점의 예산에 따라 달라집니다. ' +
       '항목을 열면 무엇을 근거로 계산했는지 볼 수 있습니다.</div>' : '') +
     (EV.confirmed.length ? EV.confirmed.map(function (r) { return moneyRow(r, true); }).join('')
       : '<div class="empty" style="padding:20px 0">아직 확정된 제도가 없습니다.</div>') + '</div>';
@@ -5068,8 +5067,7 @@ function viewMoney() {
   if (myRegionRows.length) {
     var placeName = profile.sigungu ? profile.sido + ' ' + profile.sigungu : profile.sido;
     h += moneySection('myregion', '우리 동네가 주는 것', myRegionRows, true,
-      esc(placeName) + ' 제도만 모았습니다. 전국 공통 제도는 여기 없습니다 — 지자체가 따로 주는 것이 무엇인지 한눈에 보라고 만든 자리입니다. ' +
-      '같은 항목이 아래 상태별 목록에도 나옵니다.');
+      '<b>' + esc(placeName) + '</b>이 따로 주는 것만 모았습니다. 같은 항목이 아래 상태별 목록에도 나옵니다.');
   }
 
   // 조건부를 한 묶음에 뭉쳐 두면 '지금 못 받는 이유'가 서로 다른 것들이 섞인다.
@@ -5675,14 +5673,15 @@ function iosInstallBanner() {
     (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   if (isIos) {
     return '<div class="iosbar"><div class="iosbar-t">' +
-      '<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다.</b> 사파리 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;' +
+      '<b>홈 화면에 추가</b>하면 앱처럼 열립니다 · 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;' +
       '</div><button class="iosbar-x" data-iosclose aria-label="설치 안내 닫기">' + ICON.close + '</button></div>';
   }
   // 브라우저가 설치를 제안할 준비가 됐을 때만 — 준비되지 않았으면 아무 말도 하지 않는다.
   if (!installEvent) return '';
-  return '<div class="iosbar"><div class="iosbar-t">' +
-    '<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다.</b> 설치해 두면 인터넷이 느려도 바로 열립니다.' +
-    '</div><button class="pill" data-install>홈 화면에 추가</button>' +
+  // 세 줄짜리 권유가 첫 화면의 5분의 1을 먹고 있었다. 사용자가 여기 온 이유는
+  // 설치가 아니라 금액이다 — 권유는 한 줄이면 족하다.
+  return '<div class="iosbar"><div class="iosbar-t"><b>홈 화면에 추가</b>하면 앱처럼 열립니다' +
+    '</div><button class="pill" data-install>추가</button>' +
     '<button class="iosbar-x" data-iosclose aria-label="설치 안내 닫기">' + ICON.close + '</button></div>';
 }
 
