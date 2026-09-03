@@ -361,6 +361,10 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .ask-num { min-height: 44px; width: 150px; padding: 8px 12px; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 
 /* iOS 설치 안내 — 자체 호스팅(매니페스트 링크가 있는 페이지)에서만 뜬다 */
+.fresh { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 11px 12px 11px 14px; background: var(--accent-soft, var(--sunken)); border: 1px solid var(--hair); border-radius: 12px; }
+.fresh-t { flex: 1; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.fresh-x { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 11px; background: var(--card); border: 1px solid var(--hair); border-radius: 999px; font: inherit; font-size: 13px; color: var(--sub); cursor: pointer; }
+.fresh-x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .iosbar { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; background: var(--sunken); border-bottom: 1px solid var(--hair); font-size: 13px; line-height: 1.5; color: var(--sub); }
 .iosbar-t { flex: 1; }
 .iosbar-t b { color: var(--ink); font-weight: 600; }
@@ -3580,6 +3584,30 @@ function moRow(x) {
   return h + '</div>';
 }
 
+/** 지금이 어느 시기인가를 한 글자열로. 이 값이 달라졌으면 화면이 새로 맞춰진 것이다.
+    임신 중은 주차, 출산 후는 개월. 둘 다 아니면(준비 중) 시기가 흐르지 않으므로 표식이 없다. */
+function periodMark() {
+  if (profile.stage === 'pregnant' && D.weeks != null) return 'w' + D.weeks;
+  if (profile.stage === 'postpartum' && D.childAgeMonths != null) return 'm' + D.childAgeMonths;
+  return '';
+}
+/** 무엇이 달라졌는지 사실만 적는다. 숫자가 뒤로 갔거나(예정일을 고쳤을 때)
+    단위가 바뀌었으면 몇 주가 지났다고 말할 수 없으니 담백하게 알린다. */
+function periodMessage(last, now) {
+  var unit = now.charAt(0), n = Number(now.slice(1)), p = Number(last.slice(1));
+  if (unit !== last.charAt(0) || !(n > p)) {
+    return unit === 'w' ? '임신 ' + n + '주에 맞춰 이번 주 카드와 할 일을 새로 정리했습니다.'
+                        : '생후 ' + n + '개월에 맞춰 할 일을 새로 정리했습니다.';
+  }
+  var gap = n - p;
+  if (unit === 'w') {
+    return gap === 1 ? '임신 ' + n + '주가 되었습니다. 이번 주 카드와 할 일이 새로 맞춰졌습니다.'
+                     : '지난번 이후 ' + gap + '주가 지나 ' + n + '주가 되었습니다. 카드와 할 일을 새로 맞췄습니다.';
+  }
+  return gap === 1 ? '생후 ' + n + '개월이 되었습니다. 접종·검진과 할 일이 새로 맞춰졌습니다.'
+                   : '지난번 이후 ' + gap + '개월이 지나 생후 ' + n + '개월이 되었습니다. 할 일을 새로 맞췄습니다.';
+}
+
 function viewToday() {
   var h = '';
   // 태아 성장은 '오늘'의 몸이라 펼침이 기본이다 — 버튼 뒤에 숨기지 않는다.
@@ -3635,6 +3663,22 @@ function viewToday() {
       '</div></div>';
   }
   h += '</div></div>';
+
+  /* 지난번에 왔을 때와 시기가 달라졌으면 그 사실만 알린다.
+     알림(푸시)은 구독이 필요해 로그인이 전제라, 로그인하지 않은 사람은
+     주차가 바뀐 것을 알 길이 없다. 이 한 줄이 그 자리를 대신한다.
+     재촉하지 않는다 — "아직 안 보셨다"가 아니라 "달라졌다"만 말한다.
+     처음 온 사람에게는 띄우지 않는다(무엇이 달라졌는지 말할 수 없으므로). */
+  var mark = periodMark();
+  if (mark) {
+    var last = store('yebu.lastPeriod');
+    if (last && last !== mark) {
+      h += '<div class="fresh"><div class="fresh-t">' + esc(periodMessage(last, mark)) + '</div>' +
+        '<button class="fresh-x" data-freshseen aria-label="확인">' + ICON.check + '확인</button></div>';
+    } else if (!last) {
+      store('yebu.lastPeriod', mark);   // 처음 온 것은 변화가 아니다 — 조용히 기준만 잡는다
+    }
+  }
 
   /* 색면 블록 — 가장 급한 하나. 30차 실측: 둥지를 먼저 두면 이 블록이
      375px 에서 fold 아래 1.5화면까지 밀렸다. 정보·실행이 먼저, 둥지는 그
@@ -5403,22 +5447,44 @@ function searchHtml() {
     '<div class="sheet-body">' + body + '</div></div></div>';
 }
 
-/* ── iOS 설치 안내 ─────────────────────────────────────────────────────
+/* ── 설치 안내 ─────────────────────────────────────────────────────────
    자체 호스팅 페이지(매니페스트 링크가 있는 곳)에서만 뜬다 — 아티팩트
    발행본에는 그 링크가 없어 조용하다. 홈 화면에서 열었으면(standalone)
-   이미 설치된 것이니 뜨지 않는다. iPadOS 는 Mac UA 를 쓰므로 터치점으로 가른다. */
+   이미 설치된 것이니 뜨지 않는다. iPadOS 는 Mac UA 를 쓰므로 터치점으로 가른다.
+
+   iOS 는 설치를 프로그램으로 띄울 수 없어 손으로 하는 길을 알려 준다.
+   안드로이드·크롬은 브라우저가 준비되면 beforeinstallprompt 를 주는데,
+   받아 두지 않으면 그냥 흘러가 버린다. 받아 두었다가 버튼으로 잇는다. */
+var installEvent = null;
+window.addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault();          // 브라우저 기본 배너 대신 우리 자리에서 묻는다
+  installEvent = e;
+  if (typeof render === 'function') render();
+});
+window.addEventListener('appinstalled', function () { installEvent = null; render(); });
+
+function isStandalone() {
+  return navigator.standalone === true ||
+    (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+}
 function iosInstallBanner() {
   if (!document.querySelector('link[rel="manifest"]')) return '';
+  if (isStandalone()) return '';
+  if (store('yebu.iosbanner') === 'off') return '';
   var ua = navigator.userAgent || '';
   var isIos = /iPad|iPhone|iPod/.test(ua) ||
     (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  var standalone = navigator.standalone === true ||
-    (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-  if (!isIos || standalone) return '';
-  if (store('yebu.iosbanner') === 'off') return '';
+  if (isIos) {
+    return '<div class="iosbar"><div class="iosbar-t">' +
+      '<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다.</b> 사파리 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;' +
+      '</div><button class="iosbar-x" data-iosclose aria-label="설치 안내 닫기">' + ICON.close + '</button></div>';
+  }
+  // 브라우저가 설치를 제안할 준비가 됐을 때만 — 준비되지 않았으면 아무 말도 하지 않는다.
+  if (!installEvent) return '';
   return '<div class="iosbar"><div class="iosbar-t">' +
-    '<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다.</b> 사파리 공유 버튼 → &lsquo;홈 화면에 추가&rsquo;' +
-    '</div><button class="iosbar-x" data-iosclose aria-label="설치 안내 닫기">' + ICON.close + '</button></div>';
+    '<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다.</b> 설치해 두면 인터넷이 느려도 바로 열립니다.' +
+    '</div><button class="pill" data-install>홈 화면에 추가</button>' +
+    '<button class="iosbar-x" data-iosclose aria-label="설치 안내 닫기">' + ICON.close + '</button></div>';
 }
 
 /* ── 렌더 ──────────────────────────────────────────────────────────────── */
@@ -5478,7 +5544,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -5629,6 +5695,14 @@ document.addEventListener('click', function (e) {
     render(); return;
   }
   if (t.hasAttribute('data-iosclose')) { store('yebu.iosbanner', 'off'); render(); return; }
+  if (t.hasAttribute('data-freshseen')) { store('yebu.lastPeriod', periodMark()); render(); return; }
+  if (t.hasAttribute('data-install')) {
+    var ev = installEvent;
+    installEvent = null;               // 한 번 쓴 이벤트는 다시 쓸 수 없다
+    if (ev && ev.prompt) ev.prompt();
+    render();
+    return;
+  }
   if (t.hasAttribute('data-ask')) {
     // 인라인 질문 — 항목 상세 안에서 판단에 막힌 프로필 값을 그 자리에서 받는다.
     // 값은 JSON 으로 실어 보낸다: 불리언과 문자열을 한 통로로 다루기 위해서다.
