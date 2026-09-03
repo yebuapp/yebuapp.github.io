@@ -4832,7 +4832,11 @@ var UNLOCK_TRY = {
   isMarriedCouple: 'true', dualIncome: 'true', isFixedTerm: 'true',
   residencyMonths: '120', incomeBracket: '"low"'
 };
+var unlockCache = null;
 function biggestUnlock() {
+  // 프로필이 그대로면 답도 그대로다 — 렌더마다 엔진을 열 번씩 다시 돌릴 이유가 없다.
+  var key = JSON.stringify(profile);
+  if (unlockCache && unlockCache.key === key) return unlockCache.val;
   var want = {};
   (EV.results || []).forEach(function (r) {
     if (r.status !== 'unknown' && r.countsToward) return;
@@ -4855,6 +4859,7 @@ function biggestUnlock() {
     var n = (res.counts.confirmed || 0) - (EV.counts.confirmed || 0);
     if (!best || gain > best.won) best = { field: fld, won: gain, n: n > 0 ? n : 1 };
   });
+  unlockCache = { key: key, val: best };
   return best;
 }
 
