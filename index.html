@@ -898,7 +898,10 @@ function amountByOrder(program, p) {
  */
 function payoutFor(program, birthOrder) {
   const po = program.payout;
-  if (!po || po.kind !== 'split' || !po.spanText) return {};
+  // 한 번에 받는 제도에는 이 값을 아예 심지 않는다. 그러니 값이 있다는 것 자체가
+  // "나눠 받는다"는 뜻이고, spanText 가 그 말이다 — 따로 종류를 받아 두면 그 둘이
+  // 어긋날 수 있다(실제로 어긋나 남해군 3년 4개월이 화면에서 통째로 사라졌다).
+  if (!po || !po.spanText) return {};
   if (po.orders && Array.isArray(po.orders)) {
     if (birthOrder == null) return {};
     const hit = po.orders.some((k) =>
