@@ -1914,6 +1914,14 @@ function journeyFor(evalResult) {
       if (!opened) {
         bucket = 'notyet';
         order = 200000 + (r.windowStart.daysLeft ?? 0);
+      } else if (r.status === 'future') {
+        /* 단계가 아직 오지 않았으면 지금은 신청할 수 없다 — 기한이 계산되든 아니든.
+           날짜부터 보게 두었더니, 임신 12주인 사람의 '지금 신청할 수 있는 제도 26건'
+           안에 출생신고·첫만남이용권·부모급여가 들어 있었다. 예정일에서 역산한
+           기한(255일 남음)이 있다는 이유로 '그 뒤에 신청'으로 샜기 때문이다.
+           44차에 기한 없는 쪽은 막았는데 기한 있는 쪽이 남아 있었다. */
+        bucket = 'notyet';
+        order = 210000 + (d && d.daysLeft != null ? d.daysLeft : 0);
       } else if (d && d.daysLeft != null) {
         if (d.daysLeft < 0) {
           bucket = r.softLost ? 'softlost' : 'overdue';
@@ -1928,14 +1936,6 @@ function journeyFor(evalResult) {
           bucket = 'later';
           order = d.daysLeft;
         }
-      } else if (r.status === 'future') {
-        // 기한이 없다고 해서 '언제든 신청할 수 있다'는 뜻은 아니다.
-        // 아직 단계가 오지 않은 제도를 '기한 없음'에 두면, 임신을 준비 중인 사람에게
-        // 첫만남이용권·부모급여·아동수당이 지금 신청 가능한 것처럼 보인다.
-        // 실제로 준비 단계에서 '기한 없음' 66건 중 59건이 출산 후에나 해당하는 제도였다.
-        // windowStart 로 걸러지지 않는 이유는 그 제도들에 신청 창구 정보가 없어서다.
-        bucket = 'notyet';
-        order = 210000;
       } else if (r.deadline && r.deadline.noDate) {
         // 날짜로 셀 수 없지만 확인된 사실이다 — 종류마다 사용자가 할 일이 다르다.
         const k = r.deadline.kind;
