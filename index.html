@@ -2593,9 +2593,21 @@ function sharedPayload(profile) {
 }
 
 /** v2~v4 마이그레이션 — 복사본을 돌려준다. changed 는 저장 필요 여부. */
+/** 화면 전체의 방향을 정하는 두 값이 실제로 고를 수 있는 값인가.
+ *  온보딩 시트가 주는 선택지 그대로다(역할 2·단계 3). */
+const VALID_ROLES = ['mother', 'partner'];
+const VALID_STAGES = ['preparing', 'pregnant', 'postpartum'];
+
 function migrateProfile(p) {
   const out = { ...p };
   const before = JSON.stringify(out);
+  /* 2026-09-07 적대 검증 — role 이 null 은 아닌데 'x' 같은 알 수 없는 값이면,
+     첫 실행 검사(role == null)를 그대로 통과해 온보딩이 열리지 않는다. 그런데
+     isMine() 은 모든 항목을 거짓으로 판정해 '내 몫'이 통째로 배우자 몫으로 넘어간다.
+     확인 안 된 값을 기본값으로 박지 않는다(CLAUDE.md 규칙 1) — 모르는 값은
+     모른다고 두고 다시 묻는다. 짐작해서 'mother' 로 채우면 남의 제도가 내 목록이 된다. */
+  if (out.role != null && !VALID_ROLES.includes(out.role)) out.role = null;
+  if (out.stage != null && !VALID_STAGES.includes(out.stage)) out.stage = null;
   // v2 마이그레이션 — 입력 UI 가 없던 시절의 하드코딩 기본값이 저장돼 있다.
   // 그 값들은 사용자가 고른 적이 없으므로 미입력으로 되돌린다.
   if (!out._v || out._v < 2) {
@@ -3127,6 +3139,20 @@ function onSyncFail() {
   sync.err = '서버 동기화에 실패했습니다. 연결을 확인한 뒤 내 정보의 ‘동기화 새로고침’을 눌러 주세요.';
   render();
 }
+/* RPC 가 네트워크 단계에서 거부되면(r.error 가 아니라 진짜 reject) 이행 핸들러만 달린
+   사슬은 아무 일도 하지 않는다 — "…하는 중"이 영원히 남고 사용자는 무엇이 잘못됐는지
+   모른다. onSyncFail 은 sync.msg 를 내리지 않으므로 그대로 쓸 수 없다.
+   각 호출이 이미 가진 실패 문구를 그대로 쓰되, 진행 표시는 반드시 내린다. */
+function rpcFail(msg, clearConfirm) {
+  return function () {
+    sync.msg = null;
+    // 확인창은 그것을 띄운 흐름(해제·삭제)만 거둔다. 초대·연결이 실패했다고 남이
+    // 띄워 둔 삭제 확인창을 대신 닫으면, 사용자는 취소를 누른 적이 없는데 닫힌다.
+    if (clearConfirm) sync.confirm = null;
+    sync.err = msg;
+    render();
+  };
+}
 /* supabase-js 는 HTTP 오류를 reject 가 아니라 r.error 로 줄 때가 많다 — 둘 다 잡는다. */
 function syncDone(r) { if (r && r.error) onSyncFail(); }
 
@@ -3250,6 +3276,13 @@ function svLogout() {
 }
 function svInvite() {
   if (!SUPA) return;
+  /* 진행 중이면 무시한다 — 연타·다중 탭으로 create_invite 가 두 번 불리면 커플 행이
+     둘 생기고, 그중 하나는 아무 프로필도 가리키지 않는 채 살아 있는 코드를 갖는다
+     (그 코드를 받은 배우자는 아무도 없는 커플에 혼자 연결된다).
+     (sync.msg 를 세우는 여덟 곳이 전부 성공·오류·거부 세 경로에서 msg 를 내리는 것을
+     2026-09-07 에 전수 확인했다 — 하나라도 안 내리면 이 버튼이 영구히 죽는다.
+     그 사실은 template.guard.test 가 고정한다.) */
+  if (sync.msg) return;
   sync.msg = '코드를 만드는 중…'; sync.err = null; render();
   SUPA.rpc('create_invite').then(function (r) {
     sync.msg = null;
@@ -3258,7 +3291,7 @@ function svInvite() {
     /* 코드를 만든 순간 커플 행이 생긴다 — 공유 프로필과 내 완료 기록도 밀어 둔다. */
     loadCouple().then(function () { pushShared(); return pushAllMarks(); });
     render();
-  });
+  }, rpcFail('코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.'));
 }
 function svJoin(code) {
   if (!SUPA) return;
@@ -3279,12 +3312,16 @@ function svJoin(code) {
     /* 상대가 밀어 둔 공유 프로필을 받아 적용한다 — 코드 방식과 같은 규칙. */
     SUPA.from('profile_shared').select('data').eq('couple_id', sync.coupleId).maybeSingle()
       .then(function (s) {
+        /* 이 클라이언트는 HTTP 오류를 reject 가 아니라 결과.error 로 준다 — 묻지 않으면
+           "연결됐습니다"만 뜨고 배우자가 올려 둔 값은 조용히 안 온다. 같은 파일의
+           loadCouple·ensureProfileRow 와 같은 규칙으로 맞춘다. */
+        if (s && s.error) { onSyncFail(); return; }
         if (s && s.data && s.data.data && s.data.data.v === 1) applyShared(s.data.data);
         return ensureProfileRow();
-      }, function () {})
+      }, onSyncFail)
       .then(function () { return pushAllMarks(); })
       .then(function () { recompute(); return refreshCouple(); });
-  });
+  }, rpcFail('연결하지 못했습니다. 잠시 후 다시 시도해 주세요.'));
 }
 
 /* ── 알림(웹푸시) ──────────────────────────────────────────────────────
@@ -3403,7 +3440,7 @@ function svLeave() {
     // 로컬 초대 연결 표식도 함께 정리 — 해제했는데 둥지에 콩이 둘 남으면 거짓이다(32차).
     if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
-  });
+  }, rpcFail('해제하지 못했습니다. 잠시 후 다시 시도해 주세요.', true));
 }
 function svDelete() {
   sync.msg = '계정을 삭제하는 중…'; render();
@@ -3424,7 +3461,7 @@ function svDelete() {
     sync.partnerLinked = false; sync.partnerMarks = {}; sync.code = null; sync.mode = null;
     if (profile.linkedAt) { profile.linkedAt = null; saveProfile(); }
     render();
-  });
+  }, rpcFail('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.', true));
 }
 
 /* ── 계산 ──────────────────────────────────────────────────────────────── */
@@ -3500,6 +3537,11 @@ function fmtMD(d) { return (d.getMonth() + 1) + '.' + d.getDate(); }
 function dday(n) { return n === 0 ? '오늘' : n > 0 ? 'D-' + n : 'D+' + (-n); }
 var ROLE_LABEL = { mother: '엄마', partner: '아빠' };
 var OTHER = { mother: 'partner', partner: 'mother' };
+/* role 이 비어 있으면 OTHER[role] 도 ROLE_LABEL[...] 도 undefined 라, 화면에
+   'undefined가 할 일'이 그대로 찍힌다. 백업 복원이 온보딩 잠금을 우회하던 시절의
+   실제 경로였다(2026-09-07). 그 진입점은 아래 backupApply 에서 막았지만, 라벨도
+   안전한 값으로 떨어지게 둔다 — 여기서 지어내는 것은 사실이 아니라 호칭뿐이다. */
+function otherRoleLabel() { return ROLE_LABEL[OTHER[profile.role]] || '배우자'; }
 /** 이 항목이 내 몫인가. 'both' 는 둘 다의 몫이라 누구든 체크할 수 있다. */
 function isMine(who) { return who == null || who === 'both' || who === profile.role; }
 
@@ -4101,11 +4143,11 @@ function viewTodo() {
   if (theirs.length) {
     var theirsDone = theirs.filter(function (c) { return isDone(c.item.id) || !!sync.partnerMarks[c.item.id]; }).length;
     h += '<div class="sec theirs"><button class="sec-head" data-fold="theirs" aria-expanded="' + (fold.theirs ? 'true' : 'false') + '">' +
-      '<h3>' + ROLE_LABEL[OTHER[profile.role]] + '가 할 일</h3>' +
+      '<h3>' + otherRoleLabel() + '가 할 일</h3>' +
       '<span class="count">' + theirsDone + ' / ' + theirs.length + '</span>' +
       '<span class="chev' + (fold.theirs ? ' up' : '') + '">' + ICON.chev + '</span></button>';
     if (fold.theirs) {
-      h += '<div class="secnote">여기 있는 일은 ' + ROLE_LABEL[OTHER[profile.role]] +
+      h += '<div class="secnote">여기 있는 일은 ' + otherRoleLabel() +
         ' 본인만 완료로 표시할 수 있습니다. 무엇이 남았는지 함께 보되, 대신 눌러 주지는 않습니다.</div>';
       h += theirs.map(chkRow).join('');
     }
@@ -5172,6 +5214,13 @@ function backupApply() {
   // 완료 표시도 서버에 다시 민다 — 안 밀면 배우자 화면만 예전 상태로 남는다(32차).
   if (SUPA && sync.coupleId) pushAllMarks();
   backupPending = null; backupMsg = '백업을 적용했습니다.';
+  /* 복원한 프로필에 역할·단계가 없으면 온보딩이 끝난 것이 아니다 — 로드 시점의
+     FIRST_RUN 과 같은 기준이다(844~853행). 백업 복원은 그 잠금을 거치지 않는
+     유일한 진입점이었고, 그대로 두면 isMine() 이 전부 거짓이 되어 내 몫이
+     통째로 '배우자 몫'으로 넘어간다. 값을 지어내지 않고 다시 묻는다. */
+  if (profile.role == null || profile.stage == null) {
+    FIRST_RUN = true; sheetOpen = 'me'; sheetExpanded = false;
+  }
   render();
 }
 
