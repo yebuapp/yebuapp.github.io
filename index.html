@@ -4055,10 +4055,15 @@ function viewTodo() {
       return groupOf(c) === g.key && isMine(c.item.who);
     });
     if (!rows.length) return;
-    // 먼 항목과 지난 단계의 일은 접어 둔다. 임신 중인 사람에게 반년 뒤 할 일 아홉 건을
-    // 펼쳐 보여주는 것은 안내가 아니라 압박이다. 기한을 넘긴 것은 접지 않는다 — 지각은
-    // 숨길 일이 아니라 지금 손쓸 일이다(출생신고 과태료).
-    var foldable = g.key === 'later' || g.key === 'past';
+    /* 먼 항목과 지난 단계의 일은 접어 둔다. 임신 중인 사람에게 반년 뒤 할 일 아홉 건을
+       펼쳐 보여주는 것은 안내가 아니라 압박이다. 기한을 넘긴 것은 접지 않는다 — 지각은
+       숨길 일이 아니라 지금 손쓸 일이다(출생신고 과태료).
+
+       '정보가 더 필요합니다'도 접는다. 다만 **묶음 질문은 접기 밖에 남긴다** —
+       2026-09-07 실측으로 이 묶음 1,906px 중 질문 상자가 388px, 아래 아홉 건이
+       1,304px(68%)였다. 아홉 건을 푸는 열쇠는 질문 하나이고, 그 아래 목록은 답하기
+       전에는 손쓸 수 없는 미리보기다. 그래서 열쇠는 보이게 두고 목록만 접는다. */
+    var foldable = g.key === 'later' || g.key === 'past' || g.key === 'unknown';
     var isOpen = !foldable || fold[g.key];
     // 카운트는 신청 탭·배우자 섹션과 같은 관용구 — 완료가 생기면 '남음 / 전체'로.
     var doneHere = rows.filter(function (c) { return isDone(c.item.id); }).length;
@@ -4072,7 +4077,8 @@ function viewTodo() {
     // 묶음 질문 — 이 묶음의 행들이 기다리는 입력은 대개 한두 가지다(고용 형태 하나에 여덟 행).
     // 한 번만 묻고, 행에는 되풀이하지 않는다. 답하면 여덟 행이 한꺼번에 제자리를 찾는다.
     ASK_ABOVE = false;
-    if (g.key === 'unknown' && isOpen) {
+    // isOpen 을 보지 않는다 — 목록을 접어도 질문은 남아야 한다(위 주석 참조).
+    if (g.key === 'unknown') {
       var fieldsU = [];
       rows.forEach(function (c) {
         (c.missingFields || []).forEach(function (fld) { if (fieldsU.indexOf(fld) < 0) fieldsU.push(fld); });
