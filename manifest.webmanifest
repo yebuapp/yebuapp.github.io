@@ -1,7 +1,7 @@
 {
   "name": "예부 — 예비부모 안내",
   "short_name": "예부",
-  "description": "임신 준비부터 출산 직후까지 — 시기를 아는 체크리스트와 생활 안내",
+  "description": "임신 준비부터 출산 후까지 — 시기를 아는 체크리스트와 생활 안내",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

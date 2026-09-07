@@ -1,6 +1,6 @@
 /* 예부 서비스워커 — 네트워크 우선, 실패 시 캐시(오프라인 폴백).
-   캐시 키는 빌드마다 바뀌어(17c7b05904) 구버전이 눌러앉지 않는다. */
-var CACHE = 'yebu-17c7b05904';
+   캐시 키는 빌드마다 바뀌어(8cb0d01565) 구버전이 눌러앉지 않는다. */
+var CACHE = 'yebu-8cb0d01565';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -13,13 +13,35 @@ self.addEventListener('activate', function (e) {
 });
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
+  /* 우리 출처의 것만 다룬다.
+     예전에는 출처를 가리지 않고 모든 GET 을 이 캐시에 넣었다. 그래서 Supabase 의
+     읽기(.select() = GET) 응답까지 들어갔고, 네트워크가 끊기면 낡은 동기화 상태를
+     신선한 것처럼 돌려주었다. 더 나쁜 것은 캐시에 없을 때의 폴백이었다 — JSON 을
+     기다리는 요청에 index.html 을 200 으로 돌려주어, 클라이언트가 그 HTML 전문을
+     오류 메시지에 담은 채 '동기화 실패'를 띄웠다(2026-09-07 코드로 확인).
+     구글 폰트와 분석 비콘도 여기서 빠진다. 오프라인에서 글꼴이 시스템 글꼴로
+     떨어지는 것을 감수하는 대신, 남의 응답을 우리가 보관하지 않는다. */
+  var url;
+  try { url = new URL(e.request.url); } catch (err) { return; }
+  if (url.origin !== self.location.origin) return;
+
   e.respondWith(
     fetch(e.request).then(function (res) {
-      var copy = res.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      // 성공한 응답만 보관한다 — 오류를 캐시에 넣으면 오프라인에서 그 오류가 되살아난다.
+      if (res && res.ok) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
       return res;
     }).catch(function () {
-      return caches.match(e.request).then(function (hit) { return hit || caches.match('./index.html'); });
+      return caches.match(e.request).then(function (hit) {
+        if (hit) return hit;
+        /* 앱 껍데기로 되돌리는 것은 '문서를 열려는 요청'일 때만이다.
+           그 밖의 자원(이미지·JSON 등)에 HTML 을 주면 받는 쪽이 그것을 제 형식으로
+           읽으려다 엉뚱한 곳에서 실패한다. 없으면 없다고 답하는 편이 정직하다. */
+        if (e.request.mode === 'navigate') return caches.match('./index.html');
+        return Response.error();
+      });
     })
   );
 });
