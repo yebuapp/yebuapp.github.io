@@ -137,8 +137,15 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* min-height 가 아니라 height 다. min-height 로 두면 내용이 길 때 셸이 화면보다
+     커지고, 그러면 아래 .scroll 이 내부 스크롤을 만들지 않아 **문서 전체가** 스크롤된다.
+     그 결과 탭바가 문서 맨 아래로 밀려나 신청 탭에서는 7,000px 넘게 내려야 다른 탭으로
+     갈 수 있었다(2026-09-07 실측: 오늘 4,261 · 할 일 5,060 · 신청 7,172px).
+     같은 이유로 재렌더 때 위치를 지키는 코드(.scroll.scrollTop 을 읽고 쓰는 일곱 곳)가
+     전부 무효였다 — .scroll 이 스크롤되지 않으니 언제나 0 이었다.
+     dvh 를 모르는 브라우저를 위해 vh 를 먼저 적는다(뒤엣것이 이긴다). */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -148,6 +155,9 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 20px;
+  /* 셸이 화면 높이에 고정되면 문서에는 스크롤이 없다 — 그래도 iOS 는 경계에서
+     화면 전체를 끌어당긴다. 스크롤을 이 상자 안에 가둔다. */
+  overscroll-behavior-y: contain;
 }
 
 /* --- 상단 --------------------------------------------------------------- */
@@ -4260,7 +4270,11 @@ function viewJourney() {
   // '신청할 수 있는 제도'라고 적어 둔 수의 절반 가까이가 출산 후에나 되는 것이었다.
   // 따로 신청하지 않는 것(auto)도 '신청할 수 있는 것'의 수에서 뺀다.
   var canApply = JOURNEY.filter(function (j) { return j.bucket !== 'notyet' && j.bucket !== 'auto'; });
-  var notYetN = JOURNEY.length - canApply.length;
+  /* 둘을 합쳐 세고 "아직 신청할 수 없다"고 한 줄로 말하면 거짓이 된다 —
+     따로 신청하지 않아도 되는 것(auto)은 못 하는 것이 아니라 할 필요가 없는 것이다.
+     아래에서 묶음도 따로 그리므로 숫자도 따로 센다(2026-09-07). */
+  var notYetN = JOURNEY.filter(function (j) { return j.bucket === 'notyet'; }).length;
+  var autoN = JOURNEY.filter(function (j) { return j.bucket === 'auto'; }).length;
   // 머리 숫자는 '신청할 수 있다'가 확인된 것만 센다 — 날짜가 있거나 상시로 확인된 것.
   // 공고별·예산 소진·기준일 미입력·시점 미확인까지 더하면 32건이 되는데, 그 절반은
   // 신청 시점을 따로 확인해야 하는 것이었다(43차 감사). 그것들은 수를 따로 말한다.
@@ -4275,7 +4289,8 @@ function viewJourney() {
     '<div class="hero-note">' +
     (appliedN ? appliedN + '건은 신청을 마쳤습니다' : '기한이 가까운 순서로 정리했습니다') +
     (checkN ? '<br>' + checkN + '건은 신청 시점을 따로 확인해야 해 아래에 나눠 두었습니다' : '') +
-    (notYetN ? '<br>' + notYetN + '건은 아직 신청할 수 없어 아래에 따로 두었습니다' : '') +
+    (notYetN ? '<br>' + notYetN + '건은 아직 신청할 수 없어 아래에 접어 두었습니다' : '') +
+    (autoN ? '<br>' + autoN + '건은 따로 신청하지 않아도 됩니다' : '') +
     '</div></div></div></div>';
   if (!JOURNEY.length) return h + '<div class="empty">아직 해당하는 제도가 없습니다.<br>내 정보를 채우면 더 정확해집니다.</div>';
   BUCKETS.forEach(function (b) {
@@ -4286,9 +4301,22 @@ function viewJourney() {
       return (isDone('apply_' + x.id) ? 1 : 0) - (isDone('apply_' + y.id) ? 1 : 0);
     });
     var restN = rows.filter(function (j) { return !isDone('apply_' + j.id); }).length;
-    h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>' + b.title + '</h3>' +
-      '<span class="count">' + (restN === rows.length ? rows.length : restN + ' / ' + rows.length) + '</span></div>';
-    h += rows.map(function (j) {
+    /* 지금 손쓸 수 없는 묶음은 접어 둔다 — 할 일 탭이 먼 일과 지난 일에 쓰는 원칙과 같다.
+       이 탭만 접힘이 하나도 없어서, '아직 신청할 수 없습니다' 37건이 탭 높이의 72%를
+       차지했다(2026-09-07 실측: 8,450px 중 6,069px). 지금 신청할 수 있는 것을 보려는
+       사람이 매번 그 위를 지나가야 했다.
+       기한이 걸린 묶음은 절대 접지 않는다 — 지각은 숨길 일이 아니라 지금 손쓸 일이다. */
+    var foldable = b.key === 'notyet' || b.key === 'auto';
+    // 열림 상태를 다른 탭과 섞지 않는다 — 'later' 는 할 일 탭에도 있는 키다.
+    var fkey = 'jn_' + b.key;
+    var isOpen = !foldable || !!fold[fkey];
+    var headIn = '<h3>' + b.title + '</h3><span class="count">' +
+      (restN === rows.length ? rows.length : restN + ' / ' + rows.length) + '</span>';
+    h += '<div class="sec">' + (foldable
+      ? '<button class="sec-head" data-fold="' + fkey + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        headIn + '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>'
+      : '<div class="sec-head" style="cursor:default">' + headIn + '</div>');
+    if (isOpen) h += rows.map(function (j) {
       var prog = PROGRAMS.find(function (x) { return x.id === j.id; });
       j.applyUrl = prog ? (prog.applyUrl || prog.onlineApplyUrl) : null;
       var when = '', unit = '', cls = b.bar === 'alert' ? 'alert' : '';
