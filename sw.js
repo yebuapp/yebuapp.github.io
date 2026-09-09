@@ -1,6 +1,6 @@
 /* 예부 서비스워커 — 네트워크 우선, 실패 시 캐시(오프라인 폴백).
-   캐시 키는 빌드마다 바뀌어(8cb0d01565) 구버전이 눌러앉지 않는다. */
-var CACHE = 'yebu-8cb0d01565';
+   캐시 키는 빌드마다 바뀌어(f226e30cf1) 구버전이 눌러앉지 않는다. */
+var CACHE = 'yebu-f226e30cf1';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -30,7 +30,14 @@ self.addEventListener('fetch', function (e) {
       // 성공한 응답만 보관한다 — 오류를 캐시에 넣으면 오프라인에서 그 오류가 되살아난다.
       if (res && res.ok) {
         var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        /* 응답을 돌려준 순간 워커는 언제든 종료될 수 있다 — 캐시 쓰기는 waitUntil 로
+           수명을 연장해야 끝까지 간다. put 이 던지면(예: 206 부분 응답은 ok 인데
+           Cache API 가 거부한다) 캐시만 포기하고 조용히 넘어간다. */
+        e.waitUntil(
+          caches.open(CACHE)
+            .then(function (c) { return c.put(e.request, copy); })
+            .catch(function () {})
+        );
       }
       return res;
     }).catch(function () {
