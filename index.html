@@ -698,6 +698,8 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .hero .seg { margin-top: 12px; }
 .sec-sub { font-size: 12px; font-weight: 600; color: var(--mut); letter-spacing: .02em; padding: 12px 4px 2px; }
 .dimrows .item { opacity: .72; }
+/* 접힌 행의 긴 요약은 두 줄까지 — 펼치면 전문 */
+.row-sub.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* 첫 실행 짧은 시트 — 무엇을 해 주는 앱인지 한 번은 말하고 묻는다. */
 .quicklead {
   display: flex; gap: 12px; align-items: flex-start;
@@ -4146,9 +4148,9 @@ function periodMessage(last, now) {
 function viewToday() {
   var h = '';
   // 태아 성장은 '오늘'의 몸이라 펼침이 기본이다 — 버튼 뒤에 숨기지 않는다.
-  if (open.fetal === undefined && profile.stage === 'pregnant' && GROWTH && GROWTH.efwG != null) {
-    open.fetal = true;
-  }
+  /* 또래 중앙값 해설은 기본 접힘(2026-09-10 UX 검토 #4 — 읽을거리가 '이번 주 세 가지'보다 위에서
+     첫 화면을 차지했다). 표기 의무는 두 층으로 지킨다: 숫자 바로 밑 한 줄에 출처(WHO)와
+     "추정·정상 범위 아님"을 늘 보이고, 네 문장 전문과 원 논문 링크는 ? 한 번에 연다. */
   /* 히어로 카드 — 주차·D-day 가 먼저 서고, 작은 둥지는 오른쪽 레이어다(캐릭터는 주인공이
      아니다 — 30차 실측 원칙 그대로). 둥지 상태는 둥지 카드와 같은 계산(currentNest)을 쓴다. */
   var row = '', kv = '';
@@ -4164,8 +4166,9 @@ function viewToday() {
     row += '<div class="dbox"><div class="dbox-label">출산까지</div><div class="dbox-value">' + (wk.left != null ? 'D-' + wk.left : '—') + '</div></div>';
     // 히어로 둘째 줄 — 또래 중앙값은 우리만 주는 정보라 뺄 수 없다. 줄을 나눠 자리를 준다.
     if (GROWTH && GROWTH.efwG != null) {
-      kv = '<button class="kv-btn" data-open="fetal"><div class="kv-label">또래 중앙값 <span class="qmark">?</span></div>' +
-        '<div class="kv-value num">' + GROWTH.efwG + '<small>g</small></div></button>';
+      kv = '<button class="kv-btn" data-open="fetal" aria-expanded="' + (open.fetal ? 'true' : 'false') + '"><div class="kv-label">또래 중앙값 <span class="qmark">?</span></div>' +
+        '<div class="kv-value num">' + GROWTH.efwG + '<small>g</small></div>' +
+        '<div class="kv-note">WHO 성장곡선의 중앙값(추정) — 정상 범위가 아닙니다</div></button>';
     } else if (GROWTH && GROWTH.reason) {
       kv = '<div><div class="kv-label">또래 중앙값</div><div class="kv-note">' + esc(GROWTH.reason) + '</div></div>';
     }
@@ -4202,7 +4205,7 @@ function viewToday() {
     ((kv || nestMini) ? '<div class="hero-kv">' + kv + nestMini + '</div>' : '') + '</div>';
 
   // 또래 중앙값 해설 — 히어로 바로 아래에 붙어야 무엇을 설명하는지 보인다.
-  // 데이터가 '화면 표기 의무'로 못박은 문장들이라 접지 않는다 — 대신 작은 글씨의 카드로 압축한다.
+  // 데이터가 '화면 표기 의무'로 못박은 문장들은 ? 한 번에 전부 나온다(숫자 옆 한 줄이 출처·성격을 늘 말한다).
   if (open.fetal && GROWTH && GROWTH.efwG != null) {
     h += '<div class="sec"><div class="item fetal-note"><div class="detail" style="border-bottom:0;padding:12px 0 10px">' +
       '<div class="lead">' + GROWTH.efwG + 'g 은 같은 주차 태아들의 ' + (FETAL.percentile || 50) + '번째 백분위, 곧 한가운데 값입니다. ' +
@@ -4679,7 +4682,7 @@ function viewLife() {
   if (body.length) livingHtml += body.map(function (x) { return guideRow(x, 'lb_'); }).join('');
   if (rules.length) livingHtml += rules.map(function (x) { return guideRow(x, 'lr_'); }).join('');
   h += lifeDrawer('life_living', '임신 생활',
-    '몸의 변화와 생활수칙 전체입니다. 지금 내 주차에 해당하는 것은 위 이번 주 묶음에 있습니다.',
+    '몸의 변화와 생활수칙 전체입니다.' + (profile.stage === 'pregnant' ? ' 지금 내 주차에 해당하는 것은 위 이번 주 묶음에 있습니다.' : ''),
     livingHtml, body.length + rules.length);
 
   /* ④ 아이 달력 */
@@ -6017,7 +6020,8 @@ function chgRow(c) {
       var s = '<div class="item"><div class="row">' +
         '<button class="row-main" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0;text-align:left">' +
         '<div class="row-title">' + esc(c.change.title) + '</div>' +
-        '<div class="row-sub">' + esc(c.change.summary) + '</div>' +
+        // 접혔을 때는 두 줄까지 — 세 건이 오늘 탭의 520px 을 먹어 둥지를 한참 아래로 밀었다(2026-09-10 실측).
+        '<div class="row-sub' + (open[id] ? '' : ' clamp') + '">' + esc(c.change.summary) + '</div>' +
         '<div class="row-meta"><span class="tag' + (c.change.kind === '신설' ? ' lime' : '') + '">' + esc(c.change.kind) + '</span>' +
         // 확정된 개정과 '아직 발표만 된 안'을 같은 얼굴로 두지 않는다. 시중 요약은
         // 이런 안을 이미 정해진 일처럼 옮기고, 그 오차가 그대로 기대가 된다.
@@ -6123,6 +6127,11 @@ function sheetHtml() {
   f += '<div class="me-h">함께</div><div class="me-card">';
   f += '<div class="field"><label>배우자와 함께 쓰기</label>';
   if (sync.sharedPending) f += sharedPendingHtml();
+  // 초대 취소 확인창 — 상대가 없어 계정 섹션에 해제 버튼이 없을 때는 이 카드 안에서 묻는다.
+  if (SUPA && sync.user && sync.coupleId && !sync.partnerLinked && sync.confirm === 'leave') {
+    f += '<div class="fieldnote" style="color:var(--alert);font-weight:700">초대를 취소하면 만들어 둔 코드가 무효가 되고 서버에 올린 내 완료 표시가 지워집니다. 기기 안의 기록은 남습니다.</div>' +
+      '<div class="seg"><button data-sync="leave-yes">취소 확정</button><button data-sync="confirm-off">그대로 두기</button></div>';
+  }
   if (SUPA) {
     if (sync.msg) f += '<div class="fieldnote">' + esc(sync.msg) + '</div>';
     if (!sync.user) {
@@ -6154,13 +6163,18 @@ function sheetHtml() {
           '상대도 카카오 로그인 후 &lsquo;코드 입력&rsquo;에 넣으면 연결됩니다.</div>' +
           '<div class="seg" style="margin-bottom:4px"><button data-sync="copy">코드 복사</button></div>';
       }
-      f += '<div class="fieldnote"><b>배우자와 연결되어 있습니다.</b> ' +
-        (sync.partnerName
-          ? esc(sync.partnerName) + ' 님과 완료 표시를 서로 봅니다. 상대 몫을 대신 체크할 수는 없습니다. 상대가 예정일·지역 같은 공유 정보를 고치면 여기서 알려 드립니다.'
-          : '상대가 아직 코드를 넣지 않았습니다. 코드를 잃어버렸다면 새로 만들 수 있습니다(이전 코드는 무효가 됩니다).') + '</div>' +
+      /* '연결됨'은 상대의 행이 확인됐을 때만 말한다(partnerLinked). 코드만 만들어 둔 상태는
+         couple_id 가 있어도 혼자다 — 그것을 "연결되어 있습니다"라고 적어 운영자가 가짜 계정이
+         붙었나 의심했다(2026-09-10 실기기). 둥지의 두 번째 콩과 같은 근거를 쓴다. */
+      var linkedNow = !!sync.partnerLinked;
+      f += '<div class="fieldnote">' + (linkedNow
+          ? '<b>배우자와 연결되어 있습니다.</b> ' + esc(sync.partnerName || '배우자') + ' 님과 완료 표시를 서로 봅니다. 상대 몫을 대신 체크할 수는 없습니다. 상대가 예정일·지역 같은 공유 정보를 고치면 여기서 알려 드립니다.'
+          : '<b>아직 연결되지 않았습니다.</b> 초대 코드를 만들어 두었지만 상대가 넣지 않았습니다. 코드는 <b>24시간</b>만 유효하니 새 코드를 만들어 보내 주세요. 함께 쓰지 않을 거면 초대를 취소하면 됩니다.') + '</div>' +
         '<div class="seg">' +
-        (sync.partnerName ? '' : '<button data-sync="invite">새 코드 만들기</button>') +
-        '<button data-sync="refresh">동기화 새로고침</button><button data-sync="logout">로그아웃</button></div>';
+        (linkedNow ? '' : '<button data-sync="invite">새 코드 만들기</button>') +
+        '<button data-sync="refresh">동기화 새로고침</button>' +
+        (linkedNow ? '' : '<button data-sync="leave">초대 취소</button>') +
+        '<button data-sync="logout">로그아웃</button></div>';
     }
   }
   if (!SUPA || !sync.user) {
@@ -6218,8 +6232,9 @@ function sheetHtml() {
       f += '<div class="fieldnote"><b>알림 켜짐.</b> 법정 기한 7일·하루 전, 주차가 바뀌는 날, 제도 시행일 아침 9시에 보냅니다. 그 외에는 보내지 않습니다.</div>' +
         '<div class="seg"><button data-sync="push-test">테스트 발송</button><button data-sync="push-off">알림 끄기</button></div>';
     } else {
-      f += '<div class="seg"><button data-sync="push-on">기한 알림 받기</button></div>' +
-        '<div class="fieldnote">법정 기한 7일·하루 전, 주차가 바뀌는 날, 제도 시행일 아침 9시에만 보냅니다.</div>';
+      f += '<div class="seg"><button data-sync="push-on">알림 켜기 — 이 기기로 받기</button></div>' +
+        '<div class="fieldnote">법정 기한 7일·하루 전, 주차가 바뀌는 날, 제도 시행일 아침 9시에만 보냅니다. ' +
+        '켜면 여기에 <b>테스트 발송</b> 버튼이 나타납니다(실기기에서 "테스트 발송이 어디 있느냐"는 물음, 2026-09-10).</div>';
     }
     f += '</div>';
   }
@@ -6242,7 +6257,8 @@ function sheetHtml() {
   /* 계정 — 연결 해제·탈퇴. 두 번 눌러야 실행된다. */
   if (SUPA && sync.user) {
     f += '<div class="field"><label>계정</label>';
-    if (sync.confirm === 'leave') {
+    // 상대가 확인된 커플의 해제 확인창. 코드만 만든 '대기' 상태의 초대 취소 확인창은 함께 카드 안에 있다.
+    if (sync.confirm === 'leave' && sync.partnerLinked) {
       f += '<div class="fieldnote" style="color:var(--alert);font-weight:700">연결을 해제하면 서버에 올린 내 완료 표시가 지워지고 상대 화면에서도 사라집니다. 기기 안의 기록은 남습니다.</div>' +
         '<div class="seg"><button data-sync="leave-yes">해제 확정</button><button data-sync="confirm-off">취소</button></div>';
     } else if (sync.confirm === 'delete') {
@@ -6250,7 +6266,8 @@ function sheetHtml() {
         '<div class="seg"><button data-sync="delete-yes">삭제 확정</button><button data-sync="confirm-off">취소</button></div>';
     } else {
       f += '<div class="seg">' +
-        (sync.coupleId ? '<button data-sync="leave">커플 연결 해제</button>' : '') +
+        // 상대가 확인된 커플만 여기서 '해제'한다 — 코드만 만든 상태는 함께 카드의 '초대 취소'가 맡는다.
+        (sync.coupleId && sync.partnerLinked ? '<button data-sync="leave">커플 연결 해제</button>' : '') +
         '<button data-sync="delete">계정 삭제</button></div>';
     }
     f += '</div>';
@@ -6276,7 +6293,7 @@ var ME_STAGE_LABEL = { preparing: '준비 중', pregnant: '임신 중', postpart
 function meSummaryLine() {
   var parts = [];
   if (profile.stage === 'postpartum') parts.push(profile.birthDate ? '아이 생일 ' + profile.birthDate : '아이 생일 미입력');
-  else if (profile.stage != null) parts.push(profile.dueDate ? '출산예정일 ' + profile.dueDate : '출산 예정일 미입력');
+  else if (profile.stage === 'pregnant') parts.push(profile.dueDate ? '출산예정일 ' + profile.dueDate : '출산 예정일 미입력');
   parts.push(profile.sido ? profile.sido + (profile.sigungu ? ' ' + profile.sigungu : '') : '지역 미입력');
   if (profile.childrenBefore != null) {
     var n = Number(profile.childrenBefore);
@@ -6316,6 +6333,8 @@ function fieldStage(quick) {
 // 단계를 고르기 전에는 날짜를 묻지 않는다 — '출산 예정일'이라고 물으면 그 자체로
 // 임신 중이라고 전제하는 말이 된다. 단계를 고르는 순간 알맞은 이름으로 나타난다.
 function fieldDate() {
+  // 임신 전(preparing)에는 예정일이 없다 — 물으면 단계 정의("임신 전, 준비하는 시기")와 모순된다(2026-09-10 UX 검토 #1).
+  if (profile.stage === 'preparing') return '';
   if (profile.stage === 'postpartum') {
     return '<div class="field"><label for="f_birthDate">아이 생일</label><input type="date" id="f_birthDate" data-set="birthDate" value="' + esc(profile.birthDate) + '"></div>';
   } else if (profile.stage != null) {
@@ -6463,8 +6482,11 @@ function onbCardHtml(sgs) {
   else h += fieldFetus();
   h += '</div>';
   if (i === ONB_STEPS.length - 1) h += '<button class="quickmore" data-sheetall="1">더 자세히 입력하기 — 거주 기간·소득·특수 조건</button>';
-  h += '<div class="foot" style="border-top:0;padding:10px 0 0">모르는 항목은 비워 두세요 — ' +
-    '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않습니다.</div>';
+  // 역할·단계는 필수(발판 버튼이 잠긴다) — 그 두 장에는 "비워 두세요"를 붙이지 않는다(2026-09-10 UX 검토 #2).
+  h += i < 2
+    ? '<div class="foot" style="border-top:0;padding:10px 0 0">이 질문은 꼭 골라 주세요 — 화면 전체의 방향을 정합니다.</div>'
+    : '<div class="foot" style="border-top:0;padding:10px 0 0">모르는 항목은 비워 두세요 — ' +
+      '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않습니다.</div>';
   return h;
 }
 function onbFootHtml() {
@@ -6872,7 +6894,7 @@ function render() {
   // 없으니, 이 자리가 말해야 할 사실은 시·도 이름이 아니라 '아직 덜 골랐다'는 것이다.
   // 시·도는 넓은 화면에서 아래 줄에 그대로 남는다(좁은 폭에서 접히는 것은 38차와 같다).
   // 이렇게 하면 이 자리에 서는 것은 언제나 여섯 글자 이하가 된다.
-  var topPlace = profile.sigungu || (profile.sido ? '시군구 선택' : '지역 미설정');
+  var topPlace = profile.sigungu || (profile.sido ? '시군구 선택' : '지역 미입력');
   // 시·도는 폰 폭에서 접고 그 위에서는 보여준다는 것이 38차의 규칙인데, 앱 본체는
   // 창이 아무리 넓어도 480px 로 고정된다. 미디어쿼리는 창 폭을 보고 레이아웃은
   // 앱 폭을 따르니, 넓은 창에서 '전남광주통합특별시'가 자리도 없이 펼쳐져 잘렸다.
