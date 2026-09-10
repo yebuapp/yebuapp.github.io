@@ -699,6 +699,10 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .chip .num { font-family: 'Jua', 'IBM Plex Sans KR', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .chip.on .num { color: var(--on-accent); }
+/* 준비 탭 — 히어로 안의 나/배우자 세그먼트, 일정의 작은 소제목, 지난 시기 행 */
+.hero .seg { margin-top: 12px; }
+.sec-sub { font-size: 12px; font-weight: 600; color: var(--mut); letter-spacing: .02em; padding: 12px 4px 2px; }
+.dimrows .item { opacity: .72; }
 /* 첫 실행 짧은 시트 — 무엇을 해 주는 앱인지 한 번은 말하고 묻는다. */
 .quicklead {
   background: var(--sunken); border-radius: var(--radius-sm);
@@ -3165,8 +3169,10 @@ var open = {};
 /* 접었다 펴는 섹션 — body·rules 는 '오늘' 탭의 몸이라 펼침이 기본이다.
    주차 필터로 '이번 주 해당분'만 나오므로 펼쳐도 길지 않다. */
 var fold = { later: false, past: false, pastDeadline: true, cond: false, need: false, theirs: false, body: true, rules: true, chg: false };
-// 혜택 탭의 칩 — 저장하지 않는다. 다시 열면 '지금 신청'부터 본다.
+// 혜택·준비 탭의 칩과 준비 탭의 나/배우자 세그먼트 — 저장하지 않는다. 다시 열면 기본값부터 본다.
 var moneyChip = 'apply';
+var prepChip = 'now';
+var whoView = 'mine';
 
 /* ── 부부 초대 코드 ────────────────────────────────────────────────
    프로필만 담는다. 한글이 섞이므로 UTF-8 바이트로 바꾼 뒤 base64 로 옮긴다. */
@@ -3876,13 +3882,15 @@ function chkRow(c) {
   return h;
 }
 
-function tlRow(t) {
+/* compact === true 면 제목과 시기만 — 준비 탭 '검사 일정'이 접혀 있을 때. 세 줄 요약 셋이
+   할 일 목록을 첫 화면 밖으로 밀어냈다(375px 실측). 열면 요약이 돌아온다. */
+function tlRow(t, compact) {
   var it = t.item, id = 't_' + it.id;
   var range = it.weekFrom + '–' + it.weekTo + '주';
   var h = '<div class="item"><div class="row">' +
     '<button class="row-main" data-open="' + esc(id) + '" style="background:none;border:0;text-align:left">' +
       '<div class="row-title">' + esc(it.name) + '</div>' +
-      '<div class="row-sub">' + esc(it.summaryLine || it.timingText || '') + '</div>' +
+      (compact === true ? '' : '<div class="row-sub">' + esc(it.summaryLine || it.timingText || '') + '</div>') +
     '</button>' +
     '<div class="row-side"><div class="row-when' + (t.applicable === 'now' ? ' now' : '') + '">' + esc(range) + '</div></div></div></div>';
   if (open[id]) {
@@ -3938,13 +3946,13 @@ function guideRow(x, key) {
 }
 
 /** 생후 개월 접종·검진 행 — 펼치면 차수·원문·출처까지. */
-function moRow(x) {
+function moRow(x, compact) {
   var it = x.item;
   var id = 'mo_' + it.id;
   var h = '<div class="item"><button class="row" data-open="' + esc(id) + '" aria-expanded="' + (open[id] ? 'true' : 'false') + '" style="background:none;border:0">' +
     '<div class="row-main">' +
       '<div class="row-title">' + esc(it.name) + '</div>' +
-      '<div class="row-sub">' + esc(it.timingText) + (it.doseNote ? ' · ' + esc(it.doseNote) : '') + '</div>' +
+      (compact === true ? '' : '<div class="row-sub">' + esc(it.timingText) + (it.doseNote ? ' · ' + esc(it.doseNote) : '') + '</div>') +
       '<div class="row-meta"><span class="tag line">' + esc(it.kind) + '</span></div>' +
     '</div></button>';
   if (open[id]) {
@@ -4082,9 +4090,13 @@ function viewToday() {
   });
   var tlNow = (profile.stage === 'pregnant' && D.weeks != null)
     ? TL.filter(function (t) { return t.applicable === 'now'; }) : [];
+  // 출산 후의 짝 — 이번 달 접종·검진 하나. 전체 일정은 준비 탭 '접종·검진 일정'에 있다.
+  var moNow = (profile.stage === 'postpartum' && D.childAgeMonths != null)
+    ? MO.filter(function (x) { return x.applicable === 'now'; }) : [];
   var picks = [];
   if (weekChk[0]) picks.push(todayChkCard(weekChk[0]));
   if (tlNow[0]) picks.push(tlRow(tlNow[0]));
+  else if (moNow[0]) picks.push(moRow(moNow[0]));
   if (weekChk[1]) picks.push(todayChkCard(weekChk[1]));
   var openN = myOpenCount().left;
   h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>이번 주 세 가지</h3>' +
@@ -4134,39 +4146,7 @@ function viewToday() {
       '<button class="askbtn" data-sharecard="week">이번 주 카드 만들기</button></div>';
   }
 
-  /* 이번 시기의 검사·진료 — 임신 중일 때만. 첫 검사는 위 '이번 주 세 가지'에 이미 있다. */
-  if (profile.stage === 'pregnant' && D.weeks != null) {
-    var tlMore = tlNow.slice(1);
-    var tlNext = TL.filter(function (t) { return t.applicable === 'upcoming'; })
-      .sort(function (a, b) { return a.item.weekFrom - b.item.weekFrom; }).slice(0, 3);
-    if (tlMore.length) {
-      h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>' + D.weeks + '주에 받는 검사</h3>' +
-        '<span class="count">' + tlMore.length + '</span></div>' + tlMore.map(tlRow).join('') + '</div>';
-    }
-    if (tlNext.length) {
-      h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>곧 받게 됩니다</h3>' +
-        '<span class="count">' + tlNext.length + '</span></div>' + tlNext.map(tlRow).join('') + '</div>';
-    }
-  }
-
-  /* 이번 달 접종·검진 — 출산 후(월령)일 때만. 임신 중 검사 섹션의 월령판이다 */
-  if (profile.stage === 'postpartum' && D.childAgeMonths != null) {
-    var moNow = MO.filter(function (x) { return x.applicable === 'now'; });
-    var moNext = MO.filter(function (x) { return x.applicable === 'upcoming'; })
-      .sort(function (a, b) { return a.item.monthFrom - b.item.monthFrom; }).slice(0, 4);
-    if (moNow.length) {
-      h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>생후 ' + D.childAgeMonths +
-        '개월의 접종·검진</h3><span class="count">' + moNow.length + '</span></div>' + moNow.map(moRow).join('') + '</div>';
-    }
-    if (moNext.length) {
-      h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>다음에 올 것</h3>' +
-        '<span class="count">' + moNext.length + '</span></div>' + moNext.map(moRow).join('') + '</div>';
-    }
-    if (moNow.length || moNext.length) {
-      h += '<div class="secnote">일정은 질병관리청 예방접종도우미·공식 안내 기준입니다. ' +
-        '아기 상태에 따른 실제 접종 판단은 소아청소년과에서 합니다.</div>';
-    }
-  }
+  /* 검사·접종 전체 일정은 준비 탭(examStripHtml)에 있다 — 여기서는 이번 주 것 하나만(위 세 가지). */
 
   /* 이 시기에 조심할 것 · 몸의 변화 — 임신 중일 때만 */
   if (profile.stage === 'pregnant') {
@@ -4292,33 +4272,76 @@ function myOpenCount() {
 
 function viewTodo() {
   var mc = myOpenCount();
-  var mine = mc.mine, mineDone = mc.done, left = mc.left;
-  var h = '<div class="hero" style="padding-bottom:10px"><div class="hero-row">' +
-    '<div class="hero-side" style="gap:6px"><div class="kv-label">내 몫의 할 일</div>' +
-    '<div class="big">' + left + '<span class="big-unit">건 남음</span></div>' +
-    (mineDone ? '<div class="hero-note">' + mineDone + '건을 마쳤습니다</div>' : '') +
-    '</div></div></div>';
+  /* 배우자 몫 — 세그먼트로 갈라 본다. 섞으면 내가 할 일이 흐려진다(2026-09-10 리디자인:
+     옛 '{배우자}가 할 일' 접힘 묶음의 자리). */
+  var theirs = CHK.filter(function (c) {
+    return !isMine(c.item.who) && c.state !== 'past' && c.state !== 'unknown' && c.state !== 'na';
+  });
+  if (!theirs.length) whoView = 'mine';
+  var mineView = whoView !== 'theirs';
+  // 상대 몫의 완료는 서버에서 온 표시(partnerMarks)도 완료로 센다 — 이 기기 기록과 별개다.
+  var doneF = function (c) { return isDone(c.item.id) || (!mineView && !!sync.partnerMarks[c.item.id]); };
+  var theirsDone = theirs.filter(doneF).length;
+  var leftN = mineView ? mc.left : theirs.length - theirsDone;
+  var doneN = mineView ? mc.done : theirsDone;
+  var h = '<div class="hero" style="padding-bottom:14px"><div class="hero-row">' +
+    '<div class="hero-side" style="gap:6px"><div class="kv-label">' + (mineView ? '내 몫의 할 일' : otherRoleLabel() + '가 할 일') + '</div>' +
+    '<div class="big">' + leftN + '<span class="big-unit">건 남음</span></div>' +
+    (doneN ? '<div class="hero-note">' + doneN + '건을 마쳤습니다</div>' : '') +
+    '</div></div>' +
+    (theirs.length ? '<div class="seg" role="group" aria-label="누구의 할 일">' +
+      '<button class="' + (mineView ? 'on' : '') + '" data-who="mine" aria-pressed="' + (mineView ? 'true' : 'false') + '">나</button>' +
+      '<button class="' + (mineView ? '' : 'on') + '" data-who="theirs" aria-pressed="' + (mineView ? 'false' : 'true') + '">' + otherRoleLabel() + '</button></div>' : '') +
+    '</div>';
 
-  /* 상태별 그룹 */
-  STATE_GROUPS.forEach(function (g) {
-    var rows = CHK.filter(function (c) {
-      return groupOf(c) === g.key && isMine(c.item.who);
-    });
-    if (!rows.length) return;
-    /* 먼 항목과 지난 단계의 일은 접어 둔다. 임신 중인 사람에게 반년 뒤 할 일 아홉 건을
-       펼쳐 보여주는 것은 안내가 아니라 압박이다. 기한을 넘긴 것은 접지 않는다 — 지각은
-       숨길 일이 아니라 지금 손쓸 일이다(출생신고 과태료).
+  h += examStripHtml();
 
-       '정보가 더 필요합니다'도 접는다. 다만 **묶음 질문은 접기 밖에 남긴다** —
+  /* 시기 칩 — 상태 묶음(STATE_GROUPS)을 한 줄에서 고른다. 옛 할 일 탭은 일곱 묶음을 위아래로
+     쌓고 먼 것을 접었는데, 이제는 칩이 범위를 고르므로 시기 묶음은 접지 않는다.
+     '정보가 더 필요합니다'만 접는다 — 열쇠 질문은 접기 밖에 남긴다(아래). */
+  var rows = mineView ? CHK.filter(function (c) { return isMine(c.item.who); }) : theirs;
+  var byGroup = function (key) { return rows.filter(function (c) { return groupOf(c) === key; }); };
+  var openN = function (list) { return list.filter(function (c) { return !doneF(c); }).length; };
+  var CHIPS = [
+    ['now', '지금', openN(byGroup('now')) + openN(byGroup('pastDeadline'))],
+    ['soon', '곧', openN(byGroup('soon'))],
+    ['anytime', '기한 없이', openN(byGroup('anytime'))],
+    ['later', '나중에', openN(byGroup('later'))],
+    // 수를 달지 않는다 — '지난 25'는 출산 18일째 사람에게 스물다섯 번 늦었다는 말로 읽혔다.
+    ['past', '지난', null]
+  ];
+  if (!mineView) CHIPS = CHIPS.filter(function (c) { return c[0] !== 'past'; });
+  if (!CHIPS.some(function (c) { return c[0] === prepChip; })) prepChip = 'now';
+  h += '<div class="chips" role="group" aria-label="시기 고르기">' + CHIPS.map(function (c) {
+    var on = prepChip === c[0];
+    return '<button class="chip' + (on ? ' on' : '') + '" data-chip="' + c[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+      c[1] + (c[2] ? ' <b class="num">' + c[2] + '</b>' : '') + '</button>';
+  }).join('') + '</div>';
+  if (!mineView) {
+    h += '<div class="sec"><div class="secnote">여기 있는 일은 ' + otherRoleLabel() +
+      ' 본인만 완료로 표시할 수 있습니다. 무엇이 남았는지 함께 보되, 대신 눌러 주지는 않습니다.</div></div>';
+  }
+
+  /* '지금' 칩은 기한이 지난 항목을 먼저 보여준다 — 지각은 숨길 일이 아니라 지금 손쓸 일이다
+     (출생신고 과태료). 정보 부족 묶음도 여기에 둔다 — 답하면 대개 '지금'으로 온다. */
+  var groupKeys = prepChip === 'now' ? ['pastDeadline', 'now', 'unknown'] : [prepChip];
+  if (!mineView) groupKeys = groupKeys.filter(function (k) { return k !== 'unknown'; });
+  var drawn = 0;
+  groupKeys.forEach(function (key) {
+    var g = STATE_GROUPS.filter(function (x) { return x.key === key; })[0];
+    var rowsG = byGroup(key);
+    if (!g || !rowsG.length) return;
+    drawn++;
+    /* '정보가 더 필요합니다'만 접는다. 다만 **묶음 질문은 접기 밖에 남긴다** —
        2026-09-07 실측으로 이 묶음 1,906px 중 질문 상자가 388px, 아래 아홉 건이
        1,304px(68%)였다. 아홉 건을 푸는 열쇠는 질문 하나이고, 그 아래 목록은 답하기
        전에는 손쓸 수 없는 미리보기다. 그래서 열쇠는 보이게 두고 목록만 접는다. */
-    var foldable = g.key === 'later' || g.key === 'past' || g.key === 'unknown';
+    var foldable = g.key === 'unknown';
     var isOpen = !foldable || fold[g.key];
-    // 카운트는 신청 탭·배우자 섹션과 같은 관용구 — 완료가 생기면 '남음 / 전체'로.
-    var doneHere = rows.filter(function (c) { return isDone(c.item.id); }).length;
+    // 카운트는 혜택 탭 신청 묶음과 같은 관용구 — 완료가 생기면 '남음 / 전체'로.
+    var doneHere = rowsG.filter(doneF).length;
     h += '<div class="sec"><button class="sec-head"' + (foldable ? ' data-fold="' + g.key + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '"' : ' disabled style="cursor:default"') + '>' +
-      '<h3>' + g.title + '</h3><span class="count">' + (doneHere ? (rows.length - doneHere) + ' / ' + rows.length : rows.length) + '</span>' +
+      '<h3>' + g.title + '</h3><span class="count">' + (doneHere ? (rowsG.length - doneHere) + ' / ' + rowsG.length : rowsG.length) + '</span>' +
       (foldable ? '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span>' : '') +
       '</button>';
     if (g.key === 'pastDeadline') {
@@ -4330,42 +4353,65 @@ function viewTodo() {
     // isOpen 을 보지 않는다 — 목록을 접어도 질문은 남아야 한다(위 주석 참조).
     if (g.key === 'unknown') {
       var fieldsU = [];
-      rows.forEach(function (c) {
+      rowsG.forEach(function (c) {
         (c.missingFields || []).forEach(function (fld) { if (fieldsU.indexOf(fld) < 0) fieldsU.push(fld); });
       });
       if (fieldsU.length) {
-        h += '<div class="secnote">아래 ' + rows.length + '건은 ' + (fieldsU.length === 1 ? '한 가지' : fieldsU.length + '가지') +
+        h += '<div class="secnote">아래 ' + rowsG.length + '건은 ' + (fieldsU.length === 1 ? '한 가지' : fieldsU.length + '가지') +
           '만 알면 정리됩니다.</div>' + askBlock({ missingFields: fieldsU });
         ASK_ABOVE = true;
       }
     }
-    if (isOpen) h += rows.map(chkRow).join('');
+    if (isOpen) h += rowsG.map(chkRow).join('');
     ASK_ABOVE = false;
     h += '</div>';
   });
-
-  /* 배우자 몫 — 내 목록 아래에 따로 둔다. 섞으면 내가 할 일이 흐려진다. */
-  var theirs = CHK.filter(function (c) {
-    return !isMine(c.item.who) && c.state !== 'past' && c.state !== 'unknown' && c.state !== 'na';
-  });
-  if (theirs.length) {
-    var theirsDone = theirs.filter(function (c) { return isDone(c.item.id) || !!sync.partnerMarks[c.item.id]; }).length;
-    h += '<div class="sec theirs"><button class="sec-head" data-fold="theirs" aria-expanded="' + (fold.theirs ? 'true' : 'false') + '">' +
-      '<h3>' + otherRoleLabel() + '가 할 일</h3>' +
-      '<span class="count">' + theirsDone + ' / ' + theirs.length + '</span>' +
-      '<span class="chev' + (fold.theirs ? ' up' : '') + '">' + ICON.chev + '</span></button>';
-    if (fold.theirs) {
-      h += '<div class="secnote">여기 있는 일은 ' + otherRoleLabel() +
-        ' 본인만 완료로 표시할 수 있습니다. 무엇이 남았는지 함께 보되, 대신 눌러 주지는 않습니다.</div>';
-      h += theirs.map(chkRow).join('');
-    }
-    h += '</div>';
-  }
+  var EMPTY_BY_CHIP = { now: '지금 할 일이 없습니다.', soon: '곧 할 일이 없습니다.', anytime: '기한 없이 챙길 것이 없습니다.',
+    later: '나중에 할 일이 없습니다.', past: '지난 단계의 일이 없습니다.' };
+  if (!drawn) h += '<div class="empty">' + EMPTY_BY_CHIP[prepChip] + '</div>';
 
   h += '<div class="foot"><b>이 화면의 모든 항목은 정부·법령 원문에서 직접 확인한 것입니다.</b><br>' +
     '기한과 금액은 제도가 바뀌면 달라집니다. 신청 전에 각 항목의 원문 링크로 한 번 더 확인하세요. ' +
     '확인하지 못한 세부는 숨기지 않고 항목 안에 그대로 적어 두었습니다.</div>';
   return h;
+}
+
+/* 검사·접종 일정 — 임신 중은 주차 검사(TL), 출산 후는 월령 접종·검진(MO).
+   이번 주(이번 달) 것은 접혀 있어도 늘 보이고, 머리를 열면 전체 일정이 순서대로 나온다.
+   옛 오늘 탭의 '주에 받는 검사'·'곧 받게 됩니다'·'개월의 접종·검진'·'다음에 올 것'이
+   여기로 왔다(2026-09-10 리디자인) — 오늘 탭은 이번 주 것 하나만 '세 가지'에 넣는다. */
+function examStripHtml() {
+  var preg = profile.stage === 'pregnant' && D.weeks != null;
+  var post = profile.stage === 'postpartum' && D.childAgeMonths != null;
+  if (!preg && !post) return '';
+  var all = preg ? TL : MO;
+  var rowFn = preg ? tlRow : moRow;
+  var fromOf = preg ? function (x) { return x.item.weekFrom; } : function (x) { return x.item.monthFrom; };
+  var byFrom = function (a, b) { return fromOf(a) - fromOf(b); };
+  var now = all.filter(function (x) { return x.applicable === 'now'; });
+  var next = all.filter(function (x) { return x.applicable === 'upcoming'; }).sort(byFrom);
+  var past = all.filter(function (x) { return x.applicable === 'past'; }).sort(byFrom);
+  var isOpen = !!fold.prep_exam;
+  var nowLabel = preg ? D.weeks + '주에 받는 검사 ' + now.length : '생후 ' + D.childAgeMonths + '개월의 접종·검진 ' + now.length;
+  var h = '<div class="sec"><button class="sec-head" data-fold="prep_exam" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+    '<h3>' + (preg ? '검사 일정' : '접종·검진 일정') + '</h3><span class="count">' + all.length + '</span>' +
+    '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
+  // 이번 주 것은 접혀 있어도 보인다 — 접는 것은 앞뒤 일정이지 지금 받을 검사가 아니다.
+  if (now.length) h += '<div class="secnote">' + nowLabel + '</div>' + now.map(function (x) { return rowFn(x, !isOpen); }).join('');
+  else if (next[0]) {
+    h += '<div class="secnote">' + (preg ? '이번 주에 받는 검사는 없습니다' : '이번 달에 맞는 접종·검진은 없습니다') +
+      ' · 다음은 <b>' + esc(next[0].item.name) + '</b>(' + (preg ? next[0].item.weekFrom + '주' : '생후 ' + next[0].item.monthFrom + '개월') + ')</div>';
+  }
+  if (isOpen) {
+    // map 의 두 번째 인자(색인)가 compact 로 새지 않게 감싼다.
+    if (next.length) h += '<div class="sec-sub">앞으로</div>' + next.map(function (x) { return rowFn(x); }).join('');
+    if (past.length) h += '<div class="sec-sub">지난 시기</div><div class="dimrows">' + past.map(function (x) { return rowFn(x); }).join('') + '</div>';
+    if (post) {
+      h += '<div class="secnote">일정은 질병관리청 예방접종도우미·공식 안내 기준입니다. ' +
+        '아기 상태에 따른 실제 접종 판단은 소아청소년과에서 합니다.</div>';
+    }
+  }
+  return h + '</div>';
 }
 
 /* ── 화면: 생활 ────────────────────────────────────────────────────────── */
@@ -6495,7 +6541,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip', 'data-who'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -6537,9 +6583,10 @@ document.addEventListener('click', function (e) {
   if (t.id === 'sosBtn') { sheetOpen = 'sos'; render(); return; }
   if (t.id === 'searchBtn') { sheetOpen = 'search'; render(); focusSearch(); return; }
 
-  if (t.hasAttribute('data-chip')) {
-    // 칩을 바꿔도 자리를 지킨다 — 접기와 같은 이유(전체 재렌더가 스크롤을 0으로 되돌린다).
-    moneyChip = t.getAttribute('data-chip');
+  if (t.hasAttribute('data-chip') || t.hasAttribute('data-who')) {
+    // 칩·세그먼트를 바꿔도 자리를 지킨다 — 접기와 같은 이유(전체 재렌더가 스크롤을 0으로 되돌린다).
+    if (t.hasAttribute('data-who')) whoView = t.getAttribute('data-who');
+    else { var cv = t.getAttribute('data-chip'); if (tab === 'money') moneyChip = cv; else prepChip = cv; }
     var scC = document.querySelector('.scroll'); var yC = scC ? scC.scrollTop : 0;
     render();
     var scC2 = document.querySelector('.scroll'); if (scC2) scC2.scrollTop = yC;
