@@ -6766,7 +6766,19 @@ function render() {
   else if (sheetOpen === 'sos') h += sosHtml();
   else if (sheetOpen === 'search') h += searchHtml();
   document.getElementById('app').innerHTML = h;
+  // 대화상자가 방금 열렸으면 초점을 안으로 들인다. 찾기 시트는 입력창이 따로 받는다(focusSearch).
+  var nowSheet = cardState.open ? 'card' : (sheetOpen || null);
+  if (nowSheet && nowSheet !== lastSheet && nowSheet !== 'search') {
+    var box = openDialogEl();
+    var f0 = box && box.querySelector('button:not([disabled]), [href], input, select');
+    if (f0) f0.focus();
+  }
+  lastSheet = nowSheet;
 }
+var lastSheet = null;   /* 직전 렌더에 열려 있던 대화상자 — 열림 전이를 알아보려고 */
+/* 지금 열려 있는 대화상자 — 시트(.sheet)와 공유 카드(.cardov)뿐이다. 가드가 대화상자 수를
+   role 속성 문자열로 세므로 선택자에는 클래스만 쓴다. */
+function openDialogEl() { return document.querySelector('.sheet, .cardov'); }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
 var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip', 'data-who', 'data-onb'];
@@ -6788,6 +6800,20 @@ document.addEventListener('visibilitychange', function () {
 /* Esc 로 덮개를 닫는다 — 시트·카드가 열리면 화면 전체를 덮는데 지금까지는 키보드로
    빠져나올 길이 없었다(43차 감사 E절). 온보딩이 끝나기 전에는 닫지 않는다: 역할·단계를
    고르지 않은 채로 나가면 그 값이 미입력인 채 화면 전체의 방향이 정해진다. */
+/* 포커스 가두기 — 시트·카드는 화면 전체를 덮는 대화상자다(role=dialog). 그런데 Tab 은
+   덮개 뒤의 탭바·본문으로 새어 나가, 키보드로 쓰는 사람은 보이지 않는 곳을 누르게 됐다
+   (2026-09-10 리디자인 043). 열린 대화상자가 있으면 Tab 은 그 안에서만 돈다. */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Tab') return;
+  var box = openDialogEl();
+  if (!box) return;
+  var els = box.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+  if (!els.length) return;
+  var first = els[0], last = els[els.length - 1], cur = document.activeElement;
+  if (e.shiftKey && (cur === first || !box.contains(cur))) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && (cur === last || !box.contains(cur))) { e.preventDefault(); first.focus(); }
+});
+
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   if (cardState.open) { closeCard(); return; }
