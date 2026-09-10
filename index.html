@@ -166,7 +166,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 /* 제목·큰 숫자 글꼴 — 둥근 Jua. 본문에는 쓰지 않는다(위 타이포 주석). */
 .display, .brand, .big, .dbox-value, .hero-say, .sec-head h3, .slab h2, .sheet-head h2,
-.dad-title, .sos-title, .nest h3, .quickdone {
+.dad-title, .sos-title, .nest h3, .quickdone, .onb-title, .optcard b, .me-h, .me-title {
   font-family: 'Jua', 'IBM Plex Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   letter-spacing: 0;
 }
@@ -205,9 +205,16 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   gap: 8px;
   padding: max(14px, env(safe-area-inset-top)) 20px 8px;
 }
-.brand { flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 400; color: var(--accent); }
-.brand svg { width: 28px; height: 28px; flex-shrink: 0; }
-.place { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex-shrink: 1; overflow: hidden; padding-left: 9px; border-left: 1px solid var(--line); }
+.brand { flex-shrink: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 400; color: var(--accent); }
+.brand svg { width: 32px; height: 32px; flex-shrink: 0; }
+.brandcol { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.brand-name { font-size: 19px; }
+/* 지역·역할 한 줄 — 본문 글꼴로(워드마크의 Jua 를 물려받지 않는다). */
+.place {
+  display: flex; align-items: baseline; gap: 4px; min-width: 0; flex-shrink: 1; overflow: hidden;
+  font-family: 'IBM Plex Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+.place em { font-style: normal; color: var(--mut); font-size: 12px; white-space: nowrap; overflow: hidden; flex-shrink: 998; }
 /* 지역명은 줄바꿈하지 않는다 — 30차 실측에서 '노원구'가 세로로 꺾였다 */
 .place b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
@@ -237,11 +244,11 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
    (여섯 글자). 네 글자 기준으로 잡은 자리로는 모자라므로, 그동안만 병원 버튼
    라벨을 접고 글자를 한 단계 줄인다. 지역 이름 자체는 절대 줄이지 않는다 —
    이 두 문구는 이름이 아니라 안내라서 크기를 낮춰도 잃는 것이 없다. */
-.top.wideplace .place b { font-size: 14px; }
+.top.wideplace .place b { font-size: 12px; }
 /* 자리에 못 들어갈 시·도 이름은 아예 접는다 — 38차의 판단 그대로, 잘린 '전남광주…'는
    정보가 아니라 노이즈다. 전체 지역은 내 정보 화면에서 언제든 확인할 수 있다. */
 .top.hidesido .place span { display: none; }
-.place b { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+.place b { font-weight: 600; font-size: 13px; letter-spacing: -0.01em; color: var(--sub); }
 .place span {
   font-size: 12px; font-weight: 400; color: var(--mut);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -693,9 +700,11 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .dimrows .item { opacity: .72; }
 /* 첫 실행 짧은 시트 — 무엇을 해 주는 앱인지 한 번은 말하고 묻는다. */
 .quicklead {
+  display: flex; gap: 12px; align-items: flex-start;
   background: var(--sunken); border-radius: var(--radius-sm);
-  padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.6;
+  padding: 14px 16px; margin-bottom: 14px; font-size: 14px; line-height: 1.6;
 }
+.quicklead svg { width: 36px; height: 36px; flex-shrink: 0; }
 .quicklead .quicksub { display: inline-block; margin-top: 6px; color: var(--sub); font-size: 13px; }
 .quickdone {
   display: block; width: 100%; margin-top: 6px; padding: 15px;
@@ -715,6 +724,38 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
   font-family: inherit; font-size: 14px; font-weight: 500; color: var(--sub);
 }
+/* 첫 실행 질문 카드 — 진행 막대·큰 선택지·이전/다음 발판 (2026-09-10 리디자인) */
+.onb-top { display: flex; align-items: center; gap: 12px; padding: 4px 0 14px; }
+.onb-n { font-size: 13px; color: var(--mut); flex-shrink: 0; }
+.onb-steps { display: flex; gap: 5px; flex: 1; }
+.onb-steps .step { height: 6px; border-radius: 999px; background: var(--hair); flex: 1; }
+.onb-steps .step.on { background: var(--accent); }
+.onb-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 18px 16px; }
+.onb-title { font-size: 24px; font-weight: 400; line-height: 1.3; letter-spacing: -0.01em; text-wrap: balance; }
+.onb-sub { margin: 6px 0 14px; font-size: 14px; line-height: 1.6; color: var(--sub); }
+.onb-card .field { padding-top: 4px; }
+.optcards { display: flex; flex-direction: column; gap: 10px; }
+.optcard {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%;
+  padding: 14px 16px; text-align: left; border: 2px solid var(--line); border-radius: 20px;
+  background: var(--surface); font-family: inherit; cursor: pointer;
+}
+.optcard b { font-size: 19px; font-weight: 400; color: var(--ink); }
+.optcard span { font-size: 13px; color: var(--sub); }
+.optcard.on { border-color: var(--accent); background: var(--accent-tint); }
+.onb-foot { display: flex; gap: 8px; }
+.onb-foot .quickdone { flex: 1; margin-top: 0; }
+.onb-foot .onb-prev { width: auto; flex: 0 0 auto; margin-top: 0; padding: 13px 18px; border-radius: 18px; }
+/* 내 정보 — 카드 넷 */
+.me-h { font-size: 17px; font-weight: 400; margin: 18px 2px 8px; }
+.me-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-top: 10px; }
+.me-row { display: flex; align-items: center; gap: 10px; }
+.me-main { flex: 1; min-width: 0; }
+.me-title { font-size: 19px; font-weight: 400; line-height: 1.3; }
+.me-sub { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--sub); }
+.askwrap.bare { margin: 10px 0 0; }
+.fieldnote.gain { margin: 4px 0 8px; color: var(--accent); }
+.fieldnote.gain b { color: var(--accent); }
 
 /* 바로가기 — 신청처·원문으로 한 번에 넘어간다.
    상세를 펼쳐야만 링크가 보이면 아무도 원문을 확인하지 않는다. */
@@ -4811,7 +4852,7 @@ var SHEET_FIELD_LABEL = {
   childrenBefore: '자녀 수', residencyMonths: '거주 기간', stage: '단계'
 };
 
-function askBlock(r) {
+function askBlock(r, bare) {
   var fields = r.missingFields || [];
   if (!fields.length) return '';
   var h = '';
@@ -4853,6 +4894,8 @@ function askBlock(r) {
       '<div class="ask-opts"><button class="askbtn" data-sheet="me">내 정보 열기</button></div></div>';
   }
   if (!h) return '';
+  // bare: 내 정보 '남은 질문'처럼 머리말이 이미 있는 자리 — 질문마다 같은 말을 되풀이하지 않는다.
+  if (bare) return '<div class="askwrap bare">' + h + '</div>';
   return '<div class="askwrap"><div class="ask-head">이것만 알려주시면 판단합니다</div>' + h + '</div>';
 }
 
@@ -5494,7 +5537,7 @@ function backupApply() {
      유일한 진입점이었고, 그대로 두면 isMine() 이 전부 거짓이 되어 내 몫이
      통째로 '배우자 몫'으로 넘어간다. 값을 지어내지 않고 다시 묻는다. */
   if (profile.role == null || profile.stage == null) {
-    FIRST_RUN = true; sheetOpen = 'me'; sheetExpanded = false;
+    FIRST_RUN = true; sheetOpen = 'me'; sheetExpanded = false; onbStep = 0;
   }
   render();
 }
@@ -5538,19 +5581,21 @@ var UNLOCK_TRY = {
   residencyMonths: '120', incomeBracket: '"low"'
 };
 var unlockCache = null;
-function biggestUnlock() {
+/* 못 채운 필드 하나하나에 대해 '채우면 얼마나 느는가'를 잰다 — 혜택 히어로의 가장 큰 자물쇠와
+   내 정보 '남은 질문'의 질문마다 붙는 안내가 같은 셈을 쓴다(2026-09-10). */
+function unlockMap() {
   // 프로필이 그대로면 답도 그대로다 — 렌더마다 엔진을 열 번씩 다시 돌릴 이유가 없다.
   // 날짜도 키에 넣는다: TODAY 는 자정 복귀 갱신(visibilitychange)으로 세션 중 바뀔 수
   // 있는데, 이 캐시가 그때 무효가 되지 않는 유일한 파생값이었다(2026-09-09 적대 검증).
   var key = ENG.fmtDate(TODAY) + '|' + JSON.stringify(profile);
-  if (unlockCache && unlockCache.key === key) return unlockCache.val;
+  if (unlockCache && unlockCache.key === key) return unlockCache.map;
   var want = {};
   (EV.results || []).forEach(function (r) {
     if (r.status !== 'unknown' && r.countsToward) return;
     (r.missingFields || []).forEach(function (fld) { if (UNLOCK_TRY[fld] !== undefined) want[fld] = true; });
   });
   var base = EV.total || 0;
-  var best = null;
+  var map = {};
   Object.keys(want).forEach(function (fld) {
     var v;
     try { v = JSON.parse(UNLOCK_TRY[fld]); } catch (e) { return; }
@@ -5564,9 +5609,17 @@ function biggestUnlock() {
     var gain = (res.total || 0) - base;
     if (gain <= 0) return;
     var n = (res.counts.confirmed || 0) - (EV.counts.confirmed || 0);
-    if (!best || gain > best.won) best = { field: fld, won: gain, n: n > 0 ? n : 1 };
+    map[fld] = { won: gain, n: n > 0 ? n : 1 };
   });
-  unlockCache = { key: key, val: best };
+  unlockCache = { key: key, map: map };
+  return map;
+}
+function biggestUnlock() {
+  var map = unlockMap();
+  var best = null;
+  Object.keys(map).forEach(function (fld) {
+    if (!best || map[fld].won > best.won) best = { field: fld, won: map[fld].won, n: map[fld].n };
+  });
   return best;
 }
 
@@ -5907,75 +5960,41 @@ function onboardingIncomplete() {
    받는다 — 나머지는 '자세히'와 항목 안 질문으로. 41차 실측: 이 일곱으로 완전
    프로필과 같은 금액에 닿는다(남양주 기준 1,670만원, 열아홉 필드와 동일). */
 var sheetExpanded = false;
+var onbStep = 0;   /* 첫 실행 질문 카드의 현재 장(0~5) */
 var inviteMode = null;  /* null | 'show' | 'enter' */
 var searchQuery = '';
 var inviteError = null;
 function sheetHtml() {
   var sgs = (SIGUNGU.bySido && SIGUNGU.bySido[profile.sido]) || [];
-  // 첫 실행은 판정에 실제로 쓰이는 일곱 가지만 받는다. 나머지를 여기서 다 물으면
-  // 스크롤 세 화면짜리 폼이 앱이 해 줄 일을 가려 버린다 — 그것도 아직 아무 결과를
-  // 보여주기 전에. 남은 것들은 그 값이 필요한 항목 안에서 그 자리에 묻는다.
+  // 첫 실행은 판정에 실제로 쓰이는 여섯 가지만 받는다(역할·단계(+날짜)·시도·시군구·자녀 수·아기 수).
+  // 나머지를 여기서 다 물으면 스크롤 세 화면짜리 폼이 앱이 해 줄 일을 가려 버린다 — 그것도
+  // 아직 아무 결과를 보여주기 전에. 남은 것들은 그 값이 필요한 항목 안에서 그 자리에 묻는다.
   var quick = FIRST_RUN && !sheetExpanded;
-  var f = '';
-  if (quick) {
-    f += '<div class="quicklead"><b>우리 동네 기준으로 받을 지원금과 신청 기한</b>을 정리해 드립니다.<br>' +
-      '<span class="quicksub">일곱 가지만 알려주시면 시작됩니다 — 나머지는 필요할 때 그 자리에서 여쭙니다.</span></div>';
-  }
-  f += '<div class="field"><label>나는 누구인가요</label><div class="seg">' +
-    [['mother', '엄마'], ['partner', '아빠']].map(function (o) {
-      return '<button data-set="role" data-val="' + o[0] + '"' + (profile.role === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
-    }).join('') + '</div>' +
-    '<div class="fieldnote">고른 쪽에 맞춰 &lsquo;내가 할 일&rsquo;과 &lsquo;배우자가 할 일&rsquo;이 나뉩니다.' +
-    (quick ? '' : ' 상대 몫은 볼 수는 있지만 대신 체크할 수는 없습니다.') + '</div></div>';
-  f += '<div class="field"><label>지금 어느 단계인가요</label><div class="seg">' +
-    [['preparing', '준비 중'], ['pregnant', '임신 중'], ['postpartum', '출산 후']].map(function (o) {
-      return '<button data-set="stage" data-val="' + o[0] + '"' + (profile.stage === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
-    }).join('') + '</div></div>';
-  // 단계를 고르기 전에는 날짜를 묻지 않는다 — '출산 예정일'이라고 물으면 그 자체로
-  // 임신 중이라고 전제하는 말이 된다. 단계를 고르는 순간 알맞은 이름으로 나타난다.
-  if (profile.stage === 'postpartum') {
-    f += '<div class="field"><label>아이 생일</label><input type="date" data-set="birthDate" value="' + esc(profile.birthDate) + '"></div>';
-  } else if (profile.stage != null) {
-    f += '<div class="field"><label>출산 예정일</label><input type="date" data-set="dueDate" value="' + esc(profile.dueDate) + '"></div>';
-  }
-  f += '<div class="field"><label>시 · 도</label><select data-set="sido">' +
-    '<option value=""' + (profile.sido == null ? ' selected' : '') + '>선택해 주세요</option>' +
-    SIDO.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sido === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
-    '</select></div>';
-  // 고를 것이 없는 빈 목록을 내밀지 않는다 — 세종은 시·군·구를 두지 않는 단층제고,
-  // 제주는 우리가 모은 제도가 전부 도 단위다. 빈 select 는 "고르라는데 아무것도 없다"로
-  // 읽혀 거기서 멈추게 한다.
-  if (sgs.length) {
-    f += '<div class="field"><label>시 · 군 · 구</label><select data-set="sigungu">' +
-      '<option value="">선택 안 함</option>' +
-      sgs.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sigungu === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
-      '</select></div>';
-  } else if (profile.sido) {
-    f += '<div class="field"><label>시 · 군 · 구</label>' +
-      '<div class="fieldnote">' + esc(profile.sido) + '는 시·군·구를 따로 고르지 않아도 됩니다. ' +
-      '광역 단위 제도로 계산합니다.</div></div>';
-  }
-  f += '<div class="field"><label>이번 출산 전 자녀 수</label><input type="number" inputmode="numeric" min="0" max="10" data-set="childrenBefore" value="' + (profile.childrenBefore == null ? '' : profile.childrenBefore) + '"></div>';
-  f += '<div class="field"><label>이번에 태어날 아기 수</label><input type="number" inputmode="numeric" min="1" max="5" data-set="fetusCount" value="' + (profile.fetusCount == null ? '' : profile.fetusCount) + '"></div>';
   if (quick) {
     // 첫 실행은 여기서 끝난다. 남은 값은 그 값이 필요한 항목이 스스로 묻는다.
-    // 시작 버튼은 스크롤 밖 발판(sheet-foot)에 — 짧은 시트에서도 같은 자리다.
-    return sheetShell(f +
-      '<button class="quickmore" data-sheetall="1">자세히 입력하기 — 거주 기간·소득·특수 조건</button>' +
-      '<div class="foot" style="border-top:0;padding:10px 0 0">모르는 항목은 비워 두세요 — ' +
-      '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않습니다.</div>', startButtonHtml());
+    // 질문 카드 여섯 장 — 한 화면에 질문 하나(2026-09-10 리디자인). 시작 버튼은 발판에.
+    return sheetShell(onbCardHtml(sgs), onbFootHtml());
   }
-  f += '<div class="field"><label>이 지역에 산 기간 (개월)</label><input type="number" inputmode="numeric" min="0" max="600" data-set="residencyMonths" value="' + (profile.residencyMonths == null ? '' : profile.residencyMonths) + '"></div>';
-  f += '<div class="field"><label>기준중위소득 대비 가구 소득</label><select data-set="incomeBracket">' +
-    [['', '모름 · 선택 안 함'], ['under80', '80% 이하'], ['under100', '100% 이하'], ['under150', '150% 이하'], ['over150', '150% 초과']].map(function (o) {
-      return '<option value="' + o[0] + '"' + ((profile.incomeBracket || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-    }).join('') + '</select>' +
-    '<div class="fieldnote">기준중위소득은 정부가 복지 지원 대상을 정할 때 쓰는 가구 소득 기준입니다. ' +
-    '모르면 <b>모름</b>으로 두세요 — 소득이 필요한 제도는 &lsquo;정보를 더 주시면&rsquo;으로 따로 보여 드립니다.</div></div>';
-  f += TRI_FIELDS.map(triField).join('');
 
-  /* 부부 연결 */
+  /* 전체 시트 — 요약 카드(고치기) · 남은 질문 · 함께 · 알림과 저장 · 방침·제보
+     (2026-09-10 리디자인: 긴 폼 하나였던 것을 카드 넷으로) */
+  var f = '';
+  var basicOpen = !!fold.me_basic || !profile.sido;
+  f += '<div class="me-card"><div class="me-row"><div class="me-main">' +
+    '<div class="me-title">' + (ROLE_LABEL[profile.role] || '역할 미정') + ' · ' + (ME_STAGE_LABEL[profile.stage] || '단계 미정') + '</div>' +
+    '<div class="me-sub">' + esc(meSummaryLine()) + '</div></div>' +
+    '<button class="tag tint" data-fold="me_basic" aria-expanded="' + (basicOpen ? 'true' : 'false') + '" style="min-height:34px">' + (basicOpen ? '접기' : '고치기') + '</button></div>';
+  if (basicOpen) {
+    f += fieldRole(false) + fieldStage(false) + fieldDate() + fieldSido() + fieldSigungu(sgs) + fieldChildren() + fieldFetus() +
+      fieldResidency() + fieldIncome();
+  }
+  f += '</div>';
+
+  f += meQuestionsCard();
+
+  /* 함께 — 부부 연결과 건강 정보 */
   var linked = profile.linkedAt ? true : false;
+  f += '<div class="me-h">함께</div><div class="me-card">';
   f += '<div class="field"><label>배우자와 함께 쓰기</label>';
   if (SUPA) {
     if (sync.msg) f += '<div class="fieldnote">' + esc(sync.msg) + '</div>';
@@ -6052,8 +6071,10 @@ function sheetHtml() {
       '<div class="seg"><button data-health="' + (hOn ? 'off' : 'on') + '">' +
       (hOn ? '건강 정보 공유 끄기' : '건강 정보도 공유하기') + '</button></div>';
   }
-  f += '</div>';
+  f += '</div></div>';
 
+  /* 알림과 저장 */
+  f += '<div class="me-h">알림과 저장</div><div class="me-card">';
   /* 알림 — 근거 있는 3종(법정 기한·주차 전환·개정 시행)만 */
   if (SUPA) {
     f += '<div class="field"><label>알림</label>';
@@ -6106,6 +6127,7 @@ function sheetHtml() {
     }
     f += '</div>';
   }
+  f += '</div>';
 
   return sheetShell(f +
     '<div class="foot" style="border-top:0;padding-left:0;padding-right:0">모르는 항목은 비워 두세요. ' +
@@ -6113,10 +6135,208 @@ function sheetHtml() {
     // 방침은 배포돼 있었는데 그리로 가는 길이 앱 어디에도 없었다. 주소를 아는
     // 사람만 볼 수 있으면 '쉽게 확인할 수 있도록 공개'한 것이 아니다.
     '<a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> — ' +
-    '무엇이 이 기기에만 남고 무엇이 서버로 가는지 적어 두었습니다.</div>',
+    '무엇이 이 기기에만 남고 무엇이 서버로 가는지 적어 두었습니다. · ' +
+    '<a href="mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent('[예부 제보]') + '">제도 오류 제보</a></div>',
     // 첫 실행의 끝내는 길은 스크롤 밖 발판에 고정한다 — 폼 아래로 밀려 있으면 2.9화면을
     // 내려가야 시작할 수 있었다(40차 실측). '자세히'로 넘어와도 같은 자리에 있다.
     FIRST_RUN ? startButtonHtml() : '');
+}
+
+/* ── 내 정보의 기본 항목 — 첫 실행 카드와 전체 시트가 같은 조각을 쓴다 ─────────── */
+var ME_STAGE_LABEL = { preparing: '준비 중', pregnant: '임신 중', postpartum: '출산 후' };
+/* 요약 한 줄 — 날짜 · 지역 · 출산 순위. 모르는 것은 모른다고 적는다. */
+function meSummaryLine() {
+  var parts = [];
+  if (profile.stage === 'postpartum') parts.push(profile.birthDate ? '아이 생일 ' + profile.birthDate : '아이 생일 미입력');
+  else if (profile.stage != null) parts.push(profile.dueDate ? '출산예정일 ' + profile.dueDate : '출산 예정일 미입력');
+  parts.push(profile.sido ? profile.sido + (profile.sigungu ? ' ' + profile.sigungu : '') : '지역 미입력');
+  if (profile.childrenBefore != null) {
+    var n = Number(profile.childrenBefore);
+    parts.push((['첫째', '둘째', '셋째'][n] || (n + 1) + '번째') + (profile.fetusCount > 1 ? ' · 아기 ' + profile.fetusCount + '명' : ''));
+  }
+  return parts.join(' · ');
+}
+function fieldRole(quick) {
+  var opts = [['mother', '엄마', '임신·출산 당사자'], ['partner', '아빠', '배우자 · 함께 준비하는 사람']];
+  if (quick) {
+    return '<div class="optcards">' + opts.map(function (o) {
+      var on = profile.role === o[0];
+      return '<button class="optcard' + (on ? ' on' : '') + '" data-set="role" data-val="' + o[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
+    }).join('') + '</div>';
+  }
+  return '<div class="field"><label>나는 누구인가요</label><div class="seg">' +
+    opts.map(function (o) {
+      return '<button data-set="role" data-val="' + o[0] + '"' + (profile.role === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
+    }).join('') + '</div>' +
+    '<div class="fieldnote">고른 쪽에 맞춰 &lsquo;내가 할 일&rsquo;과 &lsquo;배우자가 할 일&rsquo;이 나뉩니다. 상대 몫은 볼 수는 있지만 대신 체크할 수는 없습니다.</div></div>';
+}
+function fieldStage(quick) {
+  var opts = [['preparing', '준비 중', '임신 전, 준비하는 시기'], ['pregnant', '임신 중', '아기를 기다리는 시기'], ['postpartum', '출산 후', '아기가 태어났어요']];
+  if (quick) {
+    return '<div class="optcards">' + opts.map(function (o) {
+      var on = profile.stage === o[0];
+      return '<button class="optcard' + (on ? ' on' : '') + '" data-set="stage" data-val="' + o[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
+    }).join('') + '</div>';
+  }
+  return '<div class="field"><label>지금 어느 단계인가요</label><div class="seg">' +
+    opts.map(function (o) {
+      return '<button data-set="stage" data-val="' + o[0] + '"' + (profile.stage === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
+    }).join('') + '</div></div>';
+}
+// 단계를 고르기 전에는 날짜를 묻지 않는다 — '출산 예정일'이라고 물으면 그 자체로
+// 임신 중이라고 전제하는 말이 된다. 단계를 고르는 순간 알맞은 이름으로 나타난다.
+function fieldDate() {
+  if (profile.stage === 'postpartum') {
+    return '<div class="field"><label>아이 생일</label><input type="date" data-set="birthDate" value="' + esc(profile.birthDate) + '"></div>';
+  } else if (profile.stage != null) {
+    return '<div class="field"><label>출산 예정일</label><input type="date" data-set="dueDate" value="' + esc(profile.dueDate) + '"></div>';
+  }
+  return '';
+}
+function fieldSido() {
+  return '<div class="field"><label>시 · 도</label><select data-set="sido">' +
+    '<option value=""' + (profile.sido == null ? ' selected' : '') + '>선택해 주세요</option>' +
+    SIDO.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sido === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
+    '</select></div>';
+}
+// 고를 것이 없는 빈 목록을 내밀지 않는다 — 세종은 시·군·구를 두지 않는 단층제고,
+// 제주는 우리가 모은 제도가 전부 도 단위다. 빈 select 는 "고르라는데 아무것도 없다"로
+// 읽혀 거기서 멈추게 한다.
+function fieldSigungu(sgs) {
+  if (sgs.length) {
+    return '<div class="field"><label>시 · 군 · 구</label><select data-set="sigungu">' +
+      '<option value="">선택 안 함</option>' +
+      sgs.map(function (s) { return '<option value="' + esc(s) + '"' + (profile.sigungu === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
+      '</select></div>';
+  } else if (profile.sido) {
+    return '<div class="field"><label>시 · 군 · 구</label>' +
+      '<div class="fieldnote">' + esc(profile.sido) + '는 시·군·구를 따로 고르지 않아도 됩니다. ' +
+      '광역 단위 제도로 계산합니다.</div></div>';
+  }
+  return '<div class="field"><label>시 · 군 · 구</label><div class="fieldnote">시·도를 먼저 고르면 여기서 시·군·구를 고를 수 있습니다.</div></div>';
+}
+function fieldChildren() {
+  return '<div class="field"><label>이번 출산 전 자녀 수</label><input type="number" inputmode="numeric" min="0" max="10" data-set="childrenBefore" value="' + (profile.childrenBefore == null ? '' : profile.childrenBefore) + '"></div>';
+}
+function fieldFetus() {
+  return '<div class="field"><label>이번에 태어날 아기 수</label><input type="number" inputmode="numeric" min="1" max="5" data-set="fetusCount" value="' + (profile.fetusCount == null ? '' : profile.fetusCount) + '"></div>';
+}
+function fieldResidency() {
+  return '<div class="field"><label>이 지역에 산 기간 (개월)</label><input type="number" inputmode="numeric" min="0" max="600" data-set="residencyMonths" value="' + (profile.residencyMonths == null ? '' : profile.residencyMonths) + '"></div>';
+}
+function fieldIncome() {
+  return '<div class="field"><label>기준중위소득 대비 가구 소득</label><select data-set="incomeBracket">' +
+    [['', '모름 · 선택 안 함'], ['under80', '80% 이하'], ['under100', '100% 이하'], ['under150', '150% 이하'], ['over150', '150% 초과']].map(function (o) {
+      return '<option value="' + o[0] + '"' + ((profile.incomeBracket || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('') + '</select>' +
+    '<div class="fieldnote">기준중위소득은 정부가 복지 지원 대상을 정할 때 쓰는 가구 소득 기준입니다. ' +
+    '모르면 <b>모름</b>으로 두세요 — 소득이 필요한 제도는 &lsquo;정보를 더 주시면&rsquo;으로 따로 보여 드립니다.</div></div>';
+}
+
+/* ── 남은 질문 — 모든 미답 질문의 단일 목록 (2026-09-10 리디자인) ──────────────
+   원천은 엔진·체크포인트·신청 묶음이 실제로 비어 있다고 말한 필드뿐이다 — 상관없는
+   질문을 지어내지 않는다. 특수 조건은 예/아니오/아직 모름 3지선다를 지킨다(T16).
+   답한 것은 아래 접힘에 남겨 고칠 수 있게 둔다. */
+var LOCAL_CURRENCY_TRI = ['localCurrencyOption', '아동수당 추가분을 지역사랑상품권으로 받겠어요?',
+  '인구감소지역에서 상품권으로 받으면 아동수당이 월 1만원 더 붙습니다. 모르면 비워 두세요 — 그때는 더하지 않습니다.'];
+function meQuestionsCard() {
+  var tri = TRI_FIELDS.slice();
+  // 지역화폐 선택은 인구감소지역에서만 뜻이 있다(엔진 childAllowance) — 그때만 묻는다.
+  if (profile.regionType === 'depopulation' || profile.regionType === 'depopulation_special') tri.push(LOCAL_CURRENCY_TRI);
+  var triKeys = {};
+  tri.forEach(function (o) { triKeys[o[0]] = 1; });
+  var open = [], answered = [], seen = {};
+  var consider = function (f) {
+    if (seen[f]) return;
+    seen[f] = 1;
+    // 특수 조건은 아래 3지선다가 맡는다 — 같은 질문을 예/아니오로 한 번 더 묻지 않는다(실측: 고위험 임신이 두 번 떴다).
+    if (!FIELD_ASK[f] || SHEET_FIELD_LABEL[f] || triKeys[f]) return;
+    (profile[f] == null ? open : answered).push(f);
+  };
+  needAskable().forEach(function (r) { (r.missingFields || []).forEach(consider); });
+  CHK.forEach(function (c) { if (c.state === 'unknown') (c.missingFields || []).forEach(consider); });
+  JOURNEY.forEach(function (j) { (j.missingFields || []).forEach(consider); });
+  // 답한 것도 고칠 수 있게 — 값이 있는 인라인 질문 필드는 전부
+  Object.keys(FIELD_ASK).forEach(function (f) { if (profile[f] != null) consider(f); });
+  var triOpen = tri.filter(function (o) { return profile[o[0]] == null; });
+  var triDone = tri.filter(function (o) { return profile[o[0]] != null; });
+  var openN = open.length + triOpen.length;
+  var progN = needAskable().length;
+  var um = unlockMap();
+  var gainOf = function (f) {
+    var g = um[f];
+    return g ? '<div class="fieldnote gain">답하면 최대 <b>+' + esc(ENG.won(g.won)) + '</b>이 합계에 더해질 수 있습니다 · ' + g.n + '건</div>' : '';
+  };
+  var h = '<div class="me-card"><div class="me-row"><div class="me-main">' +
+    '<div class="me-title">' + (openN ? '질문 ' + openN + '개가 남았어요' : '지금은 더 물을 것이 없어요') + '</div>' +
+    '<div class="me-sub">' + (openN
+      ? '답할수록 판단할 수 있는 제도가 늘어요' + (progN ? ' · 지금 ' + progN + '건이 답을 기다려요' : '')
+      : '새 정보가 필요해지면 그 자리에서 여쭙니다') + '</div></div>' +
+    (openN ? '<button class="tag tint" data-fold="me_ask" aria-expanded="' + (fold.me_ask ? 'true' : 'false') + '" style="min-height:34px">' +
+      (fold.me_ask ? '접기' : '이어서 답하기') + '</button>' : '') + '</div>';
+  if (fold.me_ask && openN) {
+    triOpen.forEach(function (o) { h += triField(o) + gainOf(o[0]); });
+    open.forEach(function (f) { h += askBlock({ missingFields: [f] }, true) + gainOf(f); });
+  }
+  var doneN = answered.length + triDone.length;
+  if (doneN) {
+    h += '<button class="sec-head" data-fold="me_answered" aria-expanded="' + (fold.me_answered ? 'true' : 'false') + '" style="padding-top:6px">' +
+      '<h3 style="font-size:15px">답한 질문</h3><span class="count">' + doneN + '</span>' +
+      '<span class="chev' + (fold.me_answered ? ' up' : '') + '">' + ICON.chev + '</span></button>';
+    if (fold.me_answered) {
+      triDone.forEach(function (o) { h += triField(o); });
+      answered.forEach(function (f) { h += askBlock({ missingFields: [f] }, true); });
+    }
+  }
+  return h + '</div>';
+}
+
+/* ── 첫 실행 — 질문 카드 여섯 장 ─────────────────────────────────────────────
+   역할 · 단계(+날짜) · 시·도 · 시·군·구 · 자녀 수 · 아기 수. 41차 실측: 이 값들로 완전
+   프로필과 같은 금액에 닿는다(남양주 기준 1,670만원, 열아홉 필드와 동일).
+   역할과 단계는 화면 전체의 방향을 정하므로 고르기 전에는 다음으로 갈 수 없다. */
+var ONB_STEPS = ['role', 'stage', 'sido', 'sigungu', 'children', 'fetus'];
+var ONB_TEXT = {
+  role: ['나는 누구인가요?', '화면이 &lsquo;내가 할 일&rsquo;과 &lsquo;배우자가 할 일&rsquo;로 갈려요.'],
+  stage: ['지금 어느 단계인가요?', '단계에 맞는 제도와 할 일만 보여드려요.'],
+  sido: ['어느 시·도에 사시나요?', '지역마다 주는 것이 달라요 — 우리 동네 제도까지 계산해요.'],
+  sigungu: ['시·군·구는요?', '시·군·구가 따로 주는 것이 있어요. 모르면 비워 두어도 돼요.'],
+  children: ['이번 출산 전 자녀는 몇 명인가요?', '출산 순위에 따라 금액이 달라지는 제도가 많아요.'],
+  fetus: ['이번에 태어날 아기는 몇 명인가요?', '쌍둥이면 더 주는 제도가 있어요.']
+};
+function onbIndex() { return Math.max(0, Math.min(onbStep, ONB_STEPS.length - 1)); }
+function onbCardHtml(sgs) {
+  var i = onbIndex(), key = ONB_STEPS[i];
+  var h = '<div class="onb-top"><span class="onb-n num">' + (i + 1) + ' / ' + ONB_STEPS.length + '</span><div class="onb-steps">' +
+    ONB_STEPS.map(function (s, j) { return '<i class="step' + (j <= i ? ' on' : '') + '"></i>'; }).join('') + '</div></div>';
+  if (i === 0) {
+    h += '<div class="quicklead">' + ICON.bean + '<div><b>우리 동네 기준으로 받을 지원금과 신청 기한</b>을 정리해 드립니다.' +
+      '<br><span class="quicksub">여섯 가지만 알려주시면 시작됩니다 — 나머지는 필요할 때 그 자리에서 여쭙니다.</span></div></div>';
+  }
+  h += '<div class="onb-card"><div class="onb-title">' + ONB_TEXT[key][0] + '</div><div class="onb-sub">' + ONB_TEXT[key][1] + '</div>';
+  if (key === 'role') h += fieldRole(true);
+  else if (key === 'stage') h += fieldStage(true) + fieldDate();
+  else if (key === 'sido') h += fieldSido();
+  else if (key === 'sigungu') h += fieldSigungu(sgs);
+  else if (key === 'children') h += fieldChildren();
+  else h += fieldFetus();
+  h += '</div>';
+  if (i === ONB_STEPS.length - 1) h += '<button class="quickmore" data-sheetall="1">더 자세히 입력하기 — 거주 기간·소득·특수 조건</button>';
+  h += '<div class="foot" style="border-top:0;padding:10px 0 0">모르는 항목은 비워 두세요 — ' +
+    '빈 칸을 &lsquo;해당 없음&rsquo;으로 치지 않습니다.</div>';
+  return h;
+}
+function onbFootHtml() {
+  var i = onbIndex(), last = i === ONB_STEPS.length - 1;
+  var need = (i === 0 && profile.role == null) || (i === 1 && profile.stage == null);
+  var h = '<div class="onb-foot">';
+  if (i > 0) h += '<button class="quickmore onb-prev" data-onb="prev">이전</button>';
+  h += last ? startButtonHtml()
+    : '<button class="quickdone"' + (need ? ' disabled' : ' data-onb="next"') + '>' +
+      (need ? (i === 0 ? '엄마·아빠를 골라 주세요' : '지금 단계를 골라 주세요') : '다음') + '</button>';
+  return h + '</div>';
 }
 function sheetShell(inner, foot) {
   // 온보딩이 끝나기 전에는 닫는 길을 열지 않는다 — 아래 onboardingIncomplete 참조.
@@ -6520,8 +6740,11 @@ function render() {
   var longSido = (profile.sido || '').length >= 7;
   var h = iosInstallBanner() + '<div class="top' + (topPlace.length > 4 ? ' wideplace' : '') +
     (longSido ? ' hidesido' : '') + '">' +
-    '<div class="brand">' + ICON.bean + '예부</div>' +
-    '<div class="place"><b>' + esc(topPlace) + '</b><span>' + esc(profile.sido || '') + '</span></div>' +
+    // 리디자인(2026-09-10): 워드마크 아래 지역·역할 한 줄. 시·도는 좁으면 먼저 접히고(CSS),
+    // 시·군·구는 끝까지 잘리지 않는다(T14). 역할은 시·도 다음으로 접힌다.
+    '<div class="brand">' + ICON.bean + '<div class="brandcol"><b class="brand-name">예부</b>' +
+    '<div class="place"><span>' + esc(profile.sido || '') + '</span><b>' + esc(topPlace) + '</b>' +
+    (profile.role ? '<em>· ' + ROLE_LABEL[profile.role] + '</em>' : '') + '</div></div></div>' +
     '<div class="topbtns">' +
       '<button class="iconbtn" id="searchBtn" aria-label="찾기">' + ICON.search + '</button>' +
       // 병원 신호 버튼은 알아보기 탭 최상단 카드로 옮겼다(2026-09-10 리디자인) — 몸에 관한 검색에는
@@ -6546,7 +6769,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip', 'data-who'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip', 'data-who', 'data-onb'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -6756,6 +6979,11 @@ document.addEventListener('click', function (e) {
     render();
     var sc2 = document.querySelector('.scroll'); if (sc2) sc2.scrollTop = y;
     return;
+  }
+  if (t.hasAttribute('data-onb')) {
+    onbStep += t.getAttribute('data-onb') === 'next' ? 1 : -1;
+    onbStep = Math.max(0, Math.min(onbStep, ONB_STEPS.length - 1));
+    render(); return;
   }
   if (t.hasAttribute('data-sheetall')) { sheetExpanded = true; render(); return; }
   if (t.hasAttribute('data-tri')) {
