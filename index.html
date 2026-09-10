@@ -26,30 +26,30 @@
 <meta name="naver-site-verification" content="73cc2afb196d79041071e53aad5f0b2f94529e87" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <!-- 방문자 통계 — 쿠키를 쓰지 않고, 주소의 # 뒤(카카오 로그인 토큰이 잠깐 실리는 자리)는
      보내지 않는다. 전송 본문을 가로채 직접 확인했다(2026-09-04). 개인정보처리방침에 밝혀 두었다. -->
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "187d699caf674a249f340daa99809a07"}'></script>
 <style>
 /* ===========================================================================
-   예부 — 색 토큰 (2026-08 재설계)
-   바탕과 글자는 무채색, 채도가 있는 색은 강조(인디고)와 경고(빨강) 둘뿐이다.
-   70개 규격서 실측에서 얻은 규칙: 배경 채도 0 · 잉크 채도 0 · 강조만 채도 100.
-   초록은 쓰지 않는다 — 정부 디자인 기준(KRDS)이 적록 조합을 피하라고 명시한다.
-   완료는 색이 아니라 상태로 보인다: 체크가 채워지고 글자가 흐려진다.
+   예부 — 색 토큰 (2026-09 리디자인 "예부콩과 크림")
+   바탕은 웜 크림, 글자는 무채색, 채도가 있는 색은 강조(인디고)와 경고(빨강) 둘이
+   기본이고, 상태를 말하는 파스텔 셋(피치=곧·답 필요 / 로즈=병원·기한 / 버터=안내)을
+   면 채움 전용으로 더했다. 초록은 여전히 쓰지 않는다 — 정부 디자인 기준(KRDS)이
+   적록 조합을 피하라고 명시한다. 완료는 색이 아니라 상태로 보인다.
 
    라이트를 :root 에 완전히 정의하고, 다크는 토큰만 다시 쓴다.
    테마는 세 상태다: 명시 라이트 / 명시 다크 / 미지정(=OS 설정).
    =========================================================================== */
 :root {
-  --bg:             #FBFAF9;
+  --bg:             #FAF6F0;
   --surface:        #FFFFFF;
-  --sunken:         #F1EFED;
+  --sunken:         #F3EEE6;
   --ink:            #141313;
   --sub:            #575551;
   --mut:            #6B6863;
-  --line:           #DDDAD6;
-  --hair:           #E9E6E2;
+  --line:           #E6E0D8;
+  --hair:           #F0EBE4;
   --accent:         #3538CD;
   --accent-tint:    #EFEFFB;  /* 둥지 등 부드러운 면 채움 — 잉크 금지, 장식 전용 */
   --blush:          #F0A8B8;  /* 일러스트 전용(볼터치·하트) — UI·텍스트 사용 금지 */
@@ -61,7 +61,19 @@
   --alert:          #B42318;
   --alert-bg:       #FBEAE7;
   --on-alert:       #FFFFFF;
-  --shadow:         none;
+  /* 상태 파스텔 — 면(배경)과 그 위 글자(on-*)를 짝으로만 쓴다. 뜻은 고정이다:
+     피치=곧·답이 필요해요 / 로즈=병원·기한 경고 / 버터=안내 강조 / 칩=해당 없음·중립 */
+  --peach:          #FFEFE3;
+  --on-peach:       #9A5B00;
+  --rose:           #FDE8EC;
+  --on-rose:        #B4304A;
+  --butter:         #FFF6D6;
+  --on-butter:      #8C6420;
+  --chip:           #EFECE7;
+  --radius:         22px;
+  --radius-sm:      14px;
+  --shadow:         0 2px 6px rgba(53,56,205,.05), 0 10px 26px rgba(20,19,19,.05);
+  --shadow-bar:     0 6px 24px rgba(20,19,19,.10);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -84,6 +96,15 @@
     --alert:          #FF8A7A;
     --alert-bg:       #2A1512;
     --on-alert:       #2A0C03;
+    --peach:          #3A2A18;
+    --on-peach:       #F0B27A;
+    --rose:           #3A1A22;
+    --on-rose:        #FF9AB0;
+    --butter:         #3A3016;
+    --on-butter:      #F5D27A;
+    --chip:           #22222A;
+    --shadow:         0 2px 6px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.35);
+    --shadow-bar:     0 6px 24px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"] {
@@ -106,10 +127,21 @@
   --alert:          #FF8A7A;
   --alert-bg:       #2A1512;
   --on-alert:       #2A0C03;
+  --peach:          #3A2A18;
+  --on-peach:       #F0B27A;
+  --rose:           #3A1A22;
+  --on-rose:        #FF9AB0;
+  --butter:         #3A3016;
+  --on-butter:      #F5D27A;
+  --chip:           #22222A;
+  --shadow:         0 2px 6px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.35);
+  --shadow-bar:     0 6px 24px rgba(0,0,0,.5);
 }
 
 /* ===========================================================================
-   타이포 — IBM Plex Sans KR 한 벌.
+   타이포 — 본문은 IBM Plex Sans KR(400/500/600/700), 제목과 큰 숫자만 Jua.
+   Jua 는 굵기가 하나라 본문에 쓰면 "제목이 메타보다 얇지 않다" 위계 규칙을
+   못 지킨다 — 그래서 .display 자리에만 쓴다(2026-09 리디자인).
    8단만 쓴다: 12 caption / 13 label / 14 body-sm / 16 body / 18 body-lg
              / 20 title / 26 heading / 44 display.
    굵기 3단: 400 본문 · 600 제목과 라벨 · 700 큰 숫자만.
@@ -132,6 +164,12 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 
 /* 숫자 — 자릿수가 흔들리지 않게 */
 .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* 제목·큰 숫자 글꼴 — 둥근 Jua. 본문에는 쓰지 않는다(위 타이포 주석). */
+.display, .brand, .big, .dbox-value, .hero-say, .sec-head h3, .slab h2, .sheet-head h2,
+.dad-title, .sos-title, .nest h3, .quickdone {
+  font-family: 'Jua', 'IBM Plex Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  letter-spacing: 0;
+}
 
 /* --- 셸 ------------------------------------------------------------------ */
 .app {
@@ -167,7 +205,8 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   gap: 8px;
   padding: max(14px, env(safe-area-inset-top)) 20px 8px;
 }
-.brand { flex-shrink: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: var(--accent); }
+.brand { flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 400; color: var(--accent); }
+.brand svg { width: 28px; height: 28px; flex-shrink: 0; }
 .place { display: flex; align-items: baseline; gap: 7px; min-width: 0; flex-shrink: 1; overflow: hidden; padding-left: 9px; border-left: 1px solid var(--line); }
 /* 지역명은 줄바꿈하지 않는다 — 30차 실측에서 '노원구'가 세로로 꺾였다 */
 .place b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -223,14 +262,31 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .iconbtn {
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--sub); border-radius: 10px;
+  color: var(--sub); border-radius: var(--radius-sm);
 }
 .iconbtn:active { background: var(--sunken); }
 .iconbtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-/* --- 히어로 (주차·D-day) -------------------------------------------------- */
-.hero { padding: 12px 20px 28px; }
+/* --- 히어로 (주차·D-day) — 리디자인: 첫 카드 ------------------------------- */
+.hero {
+  margin: 6px 16px 0; padding: 18px 20px 16px;
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+}
 .hero-row { display: flex; align-items: flex-end; gap: 20px; }
+/* 히어로 오른쪽 작은 둥지 — 캐릭터는 레이어다. 정보(주차·D-day)가 먼저 선다. */
+.hero-nest { margin-left: auto; flex-shrink: 0; }
+.hero-nest svg { display: block; width: 104px; height: auto; }
+/* 또래 중앙값 해설 카드 — 표기 의무 문장을 접지 않되 작게. */
+.fetal-note { margin-top: 10px; }
+.fetal-note .detail { gap: 10px; }
+.fetal-note .lead { font-size: 15px; line-height: 1.6; }
+.fetal-note .dl dd { font-size: 13px; line-height: 1.6; color: var(--sub); }
+.fetal-note .warn { font-size: 13px; }
+.fetal-note .srcline { font-size: 12px; }
+/* 오늘 탭 '내 돈 한 줄' 카드 */
+.money-card .kv-label { margin-bottom: 2px; }
+.money-card .big { font-size: 32px; }
+.money-card .hero-say { font-size: 17px; }
 .big {
   font-weight: 700;
   font-size: 44px;
@@ -266,15 +322,16 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 /* 박스형 D-day — 확정 시트의 '출산까지 D-N'. 면 채움은 장식 전용 accent-tint */
 .dbox { margin-left: auto; flex-shrink: 0; background: var(--accent-tint); border-radius: 16px; padding: 10px 16px 11px; text-align: center; }
 .dbox-label { font-size: 12px; font-weight: 500; color: var(--sub); }
-.dbox-value { margin-top: 2px; font-size: 22px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.hero-kv { display: flex; gap: 20px; margin-top: 14px; }
+.dbox-value { margin-top: 2px; font-size: 22px; font-weight: 400; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.hero-kv { display: flex; gap: 20px; margin-top: 14px; align-items: flex-end; }
 
 /* --- 색면 블록 (지금 가장 중요한 것) --------------------------------------- */
 .slab {
   margin: 0 16px 20px;
   background: var(--fill);
   color: var(--on-fill);
-  border-radius: 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   padding: 20px 20px 18px;
 }
 .slab-eyebrow {
@@ -327,8 +384,9 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 
 /* --- 리스트 (확정 시트의 카드 행 — 항목마다 부드러운 면으로 감싼다) ------------- */
 .item {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 2px 14px; margin: 0 0 10px;
+  background: var(--surface); border: 0;
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 4px 16px; margin: 0 0 12px;
 }
 .item > .golinks { padding: 0 0 15px 0; margin-top: -3px; }
 .row {
@@ -372,27 +430,32 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 
 /* 태그 */
 .tag {
-  display: inline-flex; align-items: center;
-  font-size: 12px; font-weight: 500;
-  padding: 3px 9px; border-radius: 999px;
-  background: var(--sunken); color: var(--sub);
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12.5px; font-weight: 500; line-height: 1;
+  min-height: 26px; padding: 0 11px; border-radius: 999px;
+  background: var(--chip); color: var(--sub);
 }
 .tag.legal { background: var(--alert-bg); color: var(--alert); font-weight: 600; }
 .tag.lime { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .tag.line { background: transparent; border: 1px solid var(--line); color: var(--mut); }
+/* 상태 칩 — 뜻이 고정된 파스텔. 인디고 채움(.lime)=지금·확정, 틴트=정보 */
+.tag.tint { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
+.tag.peach { background: var(--peach); color: var(--on-peach); font-weight: 600; }
+.tag.rose { background: var(--rose); color: var(--on-rose); font-weight: 600; }
+.tag.butter { background: var(--butter); color: var(--on-butter); font-weight: 600; }
 
 /* 인라인 질문 — 판단에 막힌 프로필 값을 항목 상세 안에서 바로 받는다 */
-.askwrap { margin: 12px 0 4px; padding: 12px 14px; background: var(--sunken); border-radius: 10px; }
+.askwrap { margin: 12px 0 4px; padding: 12px 14px; background: var(--sunken); border-radius: var(--radius-sm); }
 .ask-head { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .ask { margin: 10px 0 2px; }
 .ask-q { font-size: 14px; color: var(--sub); margin-bottom: 6px; }
 .ask-opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .askbtn { min-height: 44px; padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
 .askbtn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-.ask-num { min-height: 44px; width: 150px; padding: 8px 12px; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.ask-num { min-height: 44px; width: 150px; padding: 8px 12px; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 
 /* iOS 설치 안내 — 자체 호스팅(매니페스트 링크가 있는 페이지)에서만 뜬다 */
-.fresh { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 11px 12px 11px 14px; background: var(--sunken); border: 1px solid var(--hair); border-radius: 10px; }
+.fresh { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 11px 12px 11px 14px; background: var(--sunken); border: 1px solid var(--hair); border-radius: var(--radius-sm); }
 .fresh-t { flex: 1; font-size: 14px; line-height: 1.5; color: var(--ink); }
 .fresh-x { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 11px; background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; font: inherit; font-size: 13px; color: var(--sub); cursor: pointer; }
 .fresh-x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -403,7 +466,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .iosbar-x svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
 /* 아빠 주간 카드 — 배우자 화면: 아내 몸의 변화 하나 + 오늘 행동 하나 */
-.dad { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: 0 0 4px; }
+.dad { background: var(--surface); border: 0; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; margin: 0 0 4px; }
 .dad-eyebrow { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
 .dad-title { font-size: 18px; font-weight: 700; }
 .dad-what { font-size: 14px; color: var(--sub); margin-top: 4px; line-height: 1.6; }
@@ -500,13 +563,13 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 }
 .warn {
   background: var(--alert-bg); color: var(--alert);
-  border-radius: 10px; padding: 12px 14px;
+  border-radius: var(--radius-sm); padding: 12px 14px;
   font-size: 14px; font-weight: 500; line-height: 1.65;
 }
 /* 우리가 확정하지 못한 것을 어디에 물어야 하는지 — 경고가 아니라 다음 걸음이므로
    붉은색을 쓰지 않고 차분한 바탕에 둔다. */
 .askwhere {
-  background: var(--sunken); border-radius: 10px; padding: 11px 13px;
+  background: var(--sunken); border-radius: var(--radius-sm); padding: 11px 13px;
   font-size: 14px; font-weight: 500; line-height: 1.6; color: var(--sub);
 }
 .askwhere b { color: var(--ink); font-weight: 700; }
@@ -515,7 +578,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   font-size: 13px; font-weight: 600; color: var(--ink); }
 /* 우리 합계 밖에 있는 지원 — 좋은 소식이므로 경고처럼 보이지 않게, 다만 합계에
    넣지 않았다는 사실은 또렷하게. */
-.extras { background: var(--accent-tint); border-radius: 10px; padding: 12px 14px; }
+.extras { background: var(--accent-tint); border-radius: var(--radius-sm); padding: 12px 14px; }
 .extras-h { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
 .extras-i { font-size: 14px; line-height: 1.6; color: var(--sub); margin-top: 3px; }
 .extras-i b { color: var(--ink); font-weight: 700; }
@@ -523,7 +586,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   font-size: 13px; line-height: 1.6; color: var(--mut); }
 .extras-n b { color: var(--sub); font-weight: 700; }
 /* 도움을 청할 수 있는 곳 — 눈에 띄되 겁주지 않게. */
-.channels { background: var(--sunken); border-radius: 10px; padding: 12px 14px; margin-top: 4px; }
+.channels { background: var(--sunken); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 4px; }
 .channels-h { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
 .channels-i { padding: 7px 0; border-top: 1px solid var(--hair); }
 .channels-i:first-of-type { border-top: 0; padding-top: 0; }
@@ -535,21 +598,24 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .srcline a { color: var(--mut); }
 
 /* --- 탭바 --------------------------------------------------------------- */
+/* 떠 있는 알약 탭바 — 셸의 마지막 칸이라 flex-shrink:0 은 그대로다(2026-09-07 사고). */
 .tabbar {
   display: flex;
-  border-top: 1px solid var(--line);
+  margin: 0 12px calc(12px + env(safe-area-inset-bottom));
   background: var(--surface);
-  padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+  border-radius: 26px;
+  box-shadow: var(--shadow-bar);
+  padding: 6px;
   flex-shrink: 0;
 }
 .tab {
-  flex: 1; min-height: 48px;
+  flex: 1; min-height: 54px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   color: var(--sub); font-size: 12px; font-weight: 500;
-  border-radius: 10px;
+  border-radius: 18px;
 }
-.tab svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.tab.on { color: var(--ink); font-weight: 600; }
+.tab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tab.on { color: var(--accent); background: var(--accent-tint); font-weight: 600; }
 .tab.on svg { stroke-width: 2.2; }
 .tab .badge {
   position: absolute; margin: -18px 0 0 17px;
@@ -570,7 +636,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .sheet {
   width: 100%; max-width: 480px;
   background: var(--bg); color: var(--ink);
-  border-radius: 16px 16px 0 0;
+  border-radius: 28px 28px 0 0;
   max-height: 88vh; max-height: 88dvh;
   display: flex; flex-direction: column;
 }
@@ -589,7 +655,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .fieldnote b { color: var(--sub); font-weight: 600; }
 .codebox {
   background: var(--surface); border: 1.5px solid var(--line);
-  border-radius: 10px; padding: 12px 14px;
+  border-radius: var(--radius-sm); padding: 12px 14px;
 }
 .codebox code {
   font-family: ui-monospace, 'IBM Plex Sans KR', monospace;
@@ -600,7 +666,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
   width: 100%; min-height: 48px; padding: 0 14px;
   font-size: 16px; font-weight: 500;
   background: var(--surface); color: var(--ink);
-  border: 1.5px solid var(--line); border-radius: 10px;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   appearance: none;
 }
 .field select {
@@ -612,21 +678,37 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 }
 .seg { display: flex; gap: 6px; }
 .seg button {
-  flex: 1; min-height: 48px; border-radius: 10px;
+  flex: 1; min-height: 48px; border-radius: 999px;
   border: 1.5px solid var(--line); background: var(--surface);
   font-size: 16px; font-weight: 500; color: var(--sub);
 }
 .seg button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+/* 칩 한 줄 — 혜택 탭의 보기 전환. 가로로 넘기고 세로로는 한 줄만 차지한다.
+   높이·모양은 질문 버튼(.askbtn)과 같다 — 새 어휘를 만들지 않는다. 숫자만 Jua(T48). */
+.chips {
+  display: flex; gap: 8px; padding: 12px 16px 4px; overflow-x: auto;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px; padding: 0 14px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--sub);
+  font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+.chip .num { font-family: 'Jua', 'IBM Plex Sans KR', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.chip.on .num { color: var(--on-accent); }
 /* 첫 실행 짧은 시트 — 무엇을 해 주는 앱인지 한 번은 말하고 묻는다. */
 .quicklead {
-  background: var(--sunken); border-radius: 10px;
+  background: var(--sunken); border-radius: var(--radius-sm);
   padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.6;
 }
 .quicklead .quicksub { display: inline-block; margin-top: 6px; color: var(--sub); font-size: 13px; }
 .quickdone {
   display: block; width: 100%; margin-top: 6px; padding: 15px;
-  border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent);
-  font-family: inherit; font-size: 16px; font-weight: 700;
+  border: 0; border-radius: 18px; background: var(--accent); color: var(--on-accent);
+  font-size: 17px; font-weight: 400;
 }
 /* 아직 고를 것이 남았을 때 — 눌러도 되는 것처럼 보이지 않게 한다. */
 .quickdone[disabled] { background: var(--hair); color: var(--mut); font-weight: 600; }
@@ -638,7 +720,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 .sheet-foot .quickdone { margin-top: 0; }
 .quickmore {
   display: block; width: 100%; margin-top: 8px; padding: 13px;
-  border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
   font-family: inherit; font-size: 14px; font-weight: 500; color: var(--sub);
 }
 
@@ -656,7 +738,7 @@ button { background: none; border: 0; cursor: pointer; padding: 0; }
 
 .secnote {
   font-size: 14px; line-height: 1.75; color: var(--sub);
-  background: var(--sunken); border-radius: 10px;
+  background: var(--sunken); border-radius: var(--radius-sm);
   padding: 12px 14px; margin: 6px 0 4px;
 }
 .sos {
@@ -670,7 +752,7 @@ input[type="search"] {
   width: 100%; min-height: 48px; padding: 0 14px;
   font-size: 16px; font-weight: 500;
   background: var(--surface); color: var(--ink);
-  border: 1.5px solid var(--line); border-radius: 10px;
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   appearance: none; -webkit-appearance: none;
 }
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
@@ -700,7 +782,7 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 /* 예부 둥지 — 파생 전용 카드(운영자 확정: 부드러운 무드). 저장 없음, 계산만. */
-.nest{background:var(--accent-tint);border:1px solid var(--line);border-radius:20px;padding:18px 16px 14px;margin:16px 0 4px}
+.nest{background:var(--accent-tint);border:0;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 16px 14px;margin:16px 0 4px}
 .nest h3{margin:0;font-size:16px}
 .nest .nest-sub{font-size:12.5px;color:var(--sub);margin:2px 0 4px}
 .nest svg{display:block;width:min(100%,300px);height:auto;margin:2px auto 6px}
@@ -3083,6 +3165,8 @@ var open = {};
 /* 접었다 펴는 섹션 — body·rules 는 '오늘' 탭의 몸이라 펼침이 기본이다.
    주차 필터로 '이번 주 해당분'만 나오므로 펼쳐도 길지 않다. */
 var fold = { later: false, past: false, pastDeadline: true, cond: false, need: false, theirs: false, body: true, rules: true, chg: false };
+// 혜택 탭의 칩 — 저장하지 않는다. 다시 열면 '지금 신청'부터 본다.
+var moneyChip = 'apply';
 
 /* ── 부부 초대 코드 ────────────────────────────────────────────────
    프로필만 담는다. 한글이 섞이므로 UTF-8 바이트로 바꾼 뒤 base64 로 옮긴다. */
@@ -3577,9 +3661,16 @@ function otherRoleLabel() { return ROLE_LABEL[OTHER[profile.role]] || '배우자
 function isMine(who) { return who == null || who === 'both' || who === profile.role; }
 
 var ICON = {
+  /* 예부콩 — 상단 브랜드 옆 얼굴. 둥지(nestSceneSvg)와 같은 몸·새싹·볼터치 비율.
+     색은 토큰을 읽어 다크 모드에서도 제 색을 낸다. --blush 는 일러스트 전용 규칙 그대로. */
+  bean: '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+    '<ellipse cx="32" cy="37" rx="19" ry="24" fill="var(--surface)" stroke="var(--accent)" stroke-width="5"/>' +
+    '<path d="M32 13q2-8 9-9" stroke="var(--accent)" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="25" cy="33" r="2.6" fill="var(--ink)"/><circle cx="39" cy="33" r="2.6" fill="var(--ink)"/>' +
+    '<path d="M28 42q4 3.5 8 0" stroke="var(--ink)" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="20" cy="39" r="3.4" fill="var(--blush)" opacity=".75"/><circle cx="44" cy="39" r="3.4" fill="var(--blush)" opacity=".75"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></svg>',
   list:  '<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg>',
-  path:  '<svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M12 9h5.5a2 2 0 0 1 2 2v1"/><path d="M12 15H6.5a2 2 0 0 0-2 2v1"/></svg>',
   money: '<svg viewBox="0 0 24 24"><path d="M5 19V10M12 19V5M19 19v-6"/></svg>',
   bell:  '<svg viewBox="0 0 24 24"><path d="M12 4v2.5"/><path d="M6 11a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.4 20a2 2 0 0 0 3.2 0"/></svg>',
   user:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.7"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>',
@@ -3604,14 +3695,18 @@ var tab = store('yebu.tab') || 'today';
 // 그 자리를 '생활'에 주고 개정 안내는 '오늘'의 카드로 옮겼다.
 if (tab === 'law') tab = 'today';
 var TABS = [
-  { id: 'today',   label: '오늘',   icon: 'today' },
-  { id: 'todo',    label: '할 일',  icon: 'list' },
-  { id: 'life',    label: '생활',   icon: 'life' },
-  // '여정'이었으나 탭 내용이 문자 그대로 신청 관리(30·90일 버킷, 신청 완료)라
-  // 이름을 내용에 맞췄다 — 처음 온 사람이 탭 이름만 보고 찾아올 수 있어야 한다.
-  { id: 'journey', label: '신청',   icon: 'path' },
-  { id: 'money',   label: '혜택',   icon: 'money' }
+  { id: 'today', label: '오늘',     icon: 'today' },
+  // 옛 '신청' 탭을 흡수했다(2026-09-10 리디자인). 같은 제도가 기한 축(신청)과 확정도
+  // 축(혜택)으로 두 번 늘어서 있던 것이 '뒤죽박죽'의 실체였다 — 기한 축은 이 탭 안의
+  // '지금 신청' 칩이 맡는다.
+  { id: 'money', label: '혜택',     icon: 'money' },
+  // 이름은 내용에 맞춘다 — 할 일·검사·준비물이 모이는 곳이라 '준비'.
+  { id: 'todo',  label: '준비',     icon: 'list' },
+  { id: 'life',  label: '알아보기', icon: 'life' }
 ];
+// 저장된 탭 이름이 사라진 것('journey')이면 그 내용이 옮겨 간 곳으로 보낸다.
+if (tab === 'journey') { tab = 'money'; store('yebu.tab', tab); }
+if (!TABS.some(function (t) { return t.id === tab; })) tab = 'today';
 function go(t) { tab = t; store('yebu.tab', t); open = {}; render(); window.scrollTo(0, 0); var s = document.querySelector('.scroll'); if (s) s.scrollTop = 0; }
 
 /* ── 화면: 할 일 ───────────────────────────────────────────────────────── */
@@ -3896,8 +3991,9 @@ function viewToday() {
   if (open.fetal === undefined && profile.stage === 'pregnant' && GROWTH && GROWTH.efwG != null) {
     open.fetal = true;
   }
-  /* 히어로 */
-  h += '<div class="hero"><div class="hero-row">';
+  /* 히어로 카드 — 주차·D-day 가 먼저 서고, 작은 둥지는 오른쪽 레이어다(캐릭터는 주인공이
+     아니다 — 30차 실측 원칙 그대로). 둥지 상태는 둥지 카드와 같은 계산(currentNest)을 쓴다. */
+  var row = '', kv = '';
   if (profile.stage === 'pregnant' && D.weeks != null) {
     // 확정 시트 구도 — "N주 M일" + 박스형 D-day. 주차·일수 계산은 공유 카드와
     // 같은 단일 소스(APPLOGIC.weeklyCardData)를 쓴다 — 두 화면의 숫자가 갈라지지 않게.
@@ -3905,46 +4001,62 @@ function viewToday() {
       weeks: D.weeks, dueDate: profile.dueDate, today: TODAY,
       timeline: TIMELINE, checkpoints: CHK, doneIds: done, role: profile.role
     });
-    h += '<div style="display:flex;align-items:baseline;min-width:0"><div class="big">' + wk.weeks + '</div><div class="big-unit">주</div>' +
+    row = '<div style="display:flex;align-items:baseline;min-width:0"><div class="big">' + wk.weeks + '</div><div class="big-unit">주</div>' +
       (wk.dayPart ? '<div class="big" style="margin-left:7px">' + wk.dayPart + '</div><div class="big-unit">일</div>' : '') + '</div>';
-    h += '<div class="dbox"><div class="dbox-label">출산까지</div><div class="dbox-value">' + (wk.left != null ? 'D-' + wk.left : '—') + '</div></div>';
+    row += '<div class="dbox"><div class="dbox-label">출산까지</div><div class="dbox-value">' + (wk.left != null ? 'D-' + wk.left : '—') + '</div></div>';
     // 히어로 둘째 줄 — 또래 중앙값은 우리만 주는 정보라 뺄 수 없다. 줄을 나눠 자리를 준다.
-    h += '</div><div class="hero-kv">';
     if (GROWTH && GROWTH.efwG != null) {
-      h += '<button class="kv-btn" data-open="fetal"><div class="kv-label">또래 중앙값 <span class="qmark">?</span></div>' +
+      kv = '<button class="kv-btn" data-open="fetal"><div class="kv-label">또래 중앙값 <span class="qmark">?</span></div>' +
         '<div class="kv-value num">' + GROWTH.efwG + '<small>g</small></div></button>';
     } else if (GROWTH && GROWTH.reason) {
-      h += '<div><div class="kv-label">또래 중앙값</div><div class="kv-note">' + esc(GROWTH.reason) + '</div></div>';
+      kv = '<div><div class="kv-label">또래 중앙값</div><div class="kv-note">' + esc(GROWTH.reason) + '</div></div>';
     }
   } else if (profile.stage === 'postpartum' && D.childAgeMonths != null) {
     var bd = new Date(profile.birthDate + 'T00:00:00');
     var days = Math.round((TODAY - bd) / 86400000);
-    h += '<div style="display:flex;align-items:baseline"><div class="big">' + days + '</div><div class="big-unit">일째</div></div>';
-    h += '<div class="hero-side"><div><div class="kv-label">생후</div><div class="kv-value num">' + D.childAgeMonths + '<small>개월</small></div></div></div>';
+    row = '<div style="display:flex;align-items:baseline"><div class="big">' + days + '</div><div class="big-unit">일째</div></div>';
+    row += '<div class="hero-side"><div><div class="kv-label">생후</div><div class="kv-value num">' + D.childAgeMonths + '<small>개월</small></div></div></div>';
   } else if (profile.stage === 'pregnant') {
     // 예정일이 없다고 주차를 지어내지 않는다 — 무엇이 잠겨 있는지 알리고 입력을 청한다.
-    h += '<div style="flex:1"><div class="kv-label">출산 예정일을 입력하면</div>' +
+    row = '<div style="flex:1"><div class="kv-label">출산 예정일을 입력하면</div>' +
       '<div class="hero-note" style="margin-top:4px">주차별 검사·할 일 안내와 신청 기한 계산이 시작됩니다.</div>' +
       '<div style="margin-top:10px"><button class="askbtn" data-sheet="me">내 정보 입력하기</button></div></div>';
   } else if (profile.stage === 'postpartum') {
-    h += '<div style="flex:1"><div class="kv-label">아이 생일을 입력하면</div>' +
+    row = '<div style="flex:1"><div class="kv-label">아이 생일을 입력하면</div>' +
       '<div class="hero-note" style="margin-top:4px">접종·검진 일정과 신청 기한 계산이 시작됩니다.</div>' +
       '<div style="margin-top:10px"><button class="askbtn" data-sheet="me">내 정보 입력하기</button></div></div>';
   } else {
     // 준비 중에는 주차도 날짜도 없다. 대신 임신 전에 챙길 것이 몇 가지
     // 남았는지를 세어 보여 준다 — 하나씩 지워 나가는 것이 이 단계의 일이다.
-    var mine = CHK.filter(function (c) {
+    var prep = CHK.filter(function (c) {
       return isMine(c.item.who) && (c.state === 'now' || c.state === 'anytime');
     });
-    var mineDone = mine.filter(function (c) { return isDone(c.item.id); }).length;
-    var left = mine.length - mineDone;
-    h += '<div style="display:flex;align-items:baseline"><div class="big">' + left + '</div><div class="big-unit">가지</div></div>';
-    h += '<div class="hero-side"><div class="kv-label">임신 전에 챙길 것</div>' +
+    var prepDone = prep.filter(function (c) { return isDone(c.item.id); }).length;
+    var prepLeft = prep.length - prepDone;
+    row = '<div style="display:flex;align-items:baseline"><div class="big">' + prepLeft + '</div><div class="big-unit">가지</div></div>';
+    row += '<div class="hero-side"><div class="kv-label">임신 전에 챙길 것</div>' +
       '<div class="hero-note">' +
-      (mineDone ? mineDone + '가지를 마쳤습니다' : '하나씩 지워 나가시면 됩니다') +
+      (prepDone ? prepDone + '가지를 마쳤습니다' : '하나씩 지워 나가시면 됩니다') +
       '</div></div>';
   }
-  h += '</div></div>';
+  var nestMini = (profile.stage === 'pregnant' || profile.stage === 'postpartum') ? heroNestSvg() : '';
+  h += '<div class="hero"><div class="hero-row">' + row + '</div>' +
+    ((kv || nestMini) ? '<div class="hero-kv">' + kv + nestMini + '</div>' : '') + '</div>';
+
+  // 또래 중앙값 해설 — 히어로 바로 아래에 붙어야 무엇을 설명하는지 보인다.
+  // 데이터가 '화면 표기 의무'로 못박은 문장들이라 접지 않는다 — 대신 작은 글씨의 카드로 압축한다.
+  if (open.fetal && GROWTH && GROWTH.efwG != null) {
+    h += '<div class="sec"><div class="item fetal-note"><div class="detail" style="border-bottom:0;padding:12px 0 10px">' +
+      '<div class="lead">' + GROWTH.efwG + 'g 은 같은 주차 태아들의 ' + (FETAL.percentile || 50) + '번째 백분위, 곧 한가운데 값입니다. ' +
+      '손에 쥐면 생수 ' + GROWTH.efwG + 'mL 만큼입니다.</div>' +
+      '<div class="srcline">물 1mL 가 1g 이라는 정의로 환산한 것입니다 — 무게를 가늠하기 쉬우라고 덧붙인 것이지 아기 크기를 재는 기준은 아닙니다.</div>' +
+      '<div class="warn">이 숫자는 정상 범위가 아닙니다. 우리 아기가 이보다 크거나 작다고 해서 문제가 있다는 뜻이 아닙니다. ' +
+      '실제 판단은 초음파를 본 담당 의사만 할 수 있습니다.</div>' +
+      (FETAL.mustShow || []).map(function (t) { return '<div class="dl"><dd>· ' + esc(t) + '</dd></div>'; }).join('') +
+      (FETAL.source ? '<div class="srcline">' + esc(FETAL.source.name) + '</div>' +
+        goLinks([{ url: FETAL.source.url, label: '원 논문 보기' }]) : '') +
+      '</div></div></div>';
+  }
 
   /* 지난번에 왔을 때와 시기가 달라졌으면 그 사실만 알린다.
      알림(푸시)은 구독이 필요해 로그인이 전제라, 로그인하지 않은 사람은
@@ -3955,38 +4067,31 @@ function viewToday() {
   if (mark) {
     var last = store('yebu.lastPeriod');
     if (last && last !== mark) {
-      h += '<div class="fresh"><div class="fresh-t">' + esc(periodMessage(last, mark)) + '</div>' +
-        '<button class="fresh-x" data-freshseen aria-label="확인">' + ICON.check + '확인</button></div>';
+      h += '<div class="sec"><div class="fresh"><div class="fresh-t">' + esc(periodMessage(last, mark)) + '</div>' +
+        '<button class="fresh-x" data-freshseen aria-label="확인">' + ICON.check + '확인</button></div></div>';
     } else if (!last) {
       store('yebu.lastPeriod', mark);   // 처음 온 것은 변화가 아니다 — 조용히 기준만 잡는다
     }
   }
 
-  /* 색면 블록 — 가장 급한 하나. 30차 실측: 둥지를 먼저 두면 이 블록이
-     375px 에서 fold 아래 1.5화면까지 밀렸다. 정보·실행이 먼저, 둥지는 그
-     아래 — 캐릭터는 레이어이지 주인공이 아니다. */
-  var top = CHK.filter(function (c) {
+  /* 이번 주 세 가지 — 옛 색면 블록(가장 급한 하나)의 자리. 체크포인트(내 몫·지금/곧·미완료)
+     최대 둘과 이번 주 검사 하나. 전체는 준비 탭에 있고 여기서는 수만 말한다.
+     준비물(세부 체크리스트)은 할 일 탭 한 곳에만 둔다(43차 감사) — 카드는 진행률만 말한다. */
+  var weekChk = CHK.filter(function (c) {
     return !isDone(c.item.id) && isMine(c.item.who) && (c.state === 'now' || c.state === 'soon');
-  })[0];
-  if (top) {
-    var w = chkWhen(top);
-    h += '<div class="slab">' +
-      '<div class="slab-eyebrow"><span class="dot"></span>' + (top.state === 'now' ? '지금 하세요' : '곧 하셔야 합니다') + '</div>' +
-      '<h2>' + esc(top.item.name) + '</h2>' +
-      '<p>' + esc(top.item.whatToDo) + '</p>' +
-      '<div class="slab-foot">' +
-        '<button class="pill" data-done="' + esc(top.item.id) + '">' + ICON.check + '완료로 표시</button>' +
-        (w.txt ? '<div class="slab-when">' + esc(top.item.when && top.item.when.text ? top.item.when.text : w.txt) + '</div>' : '') +
-      '</div></div>';
-    // 준비물(세부 체크리스트)은 할 일 탭 한 곳에만 둔다. 43차 감사: 같은 목록이
-    // 오늘 탭 색면 블록 아래와 할 일 탭 첫 항목에 통째로 두 번 있었다. 여기서는
-    // 몇 가지 중 몇 가지를 마쳤는지만 말하고 그리로 보낸다.
-    if (top.item.steps && top.item.steps.length) {
-      var sdN = top.item.steps.filter(function (st) { return isDone(top.item.id + '/' + st.id); }).length;
-      h += '<div class="sec" style="margin-top:-12px;padding-top:0"><button class="askbtn" data-tab="todo">' +
-        '준비물 ' + sdN + ' / ' + top.item.steps.length + ' 확인 — 할 일 탭에서 보기</button></div>';
-    }
-  }
+  });
+  var tlNow = (profile.stage === 'pregnant' && D.weeks != null)
+    ? TL.filter(function (t) { return t.applicable === 'now'; }) : [];
+  var picks = [];
+  if (weekChk[0]) picks.push(todayChkCard(weekChk[0]));
+  if (tlNow[0]) picks.push(tlRow(tlNow[0]));
+  if (weekChk[1]) picks.push(todayChkCard(weekChk[1]));
+  var openN = myOpenCount().left;
+  h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>이번 주 세 가지</h3>' +
+    '<button class="count" data-tab="todo" style="min-height:44px">준비 탭에 ' + openN + '건</button></div>' +
+    (picks.length ? picks.join('')
+      : '<div class="secnote">이번 주에 급한 일은 없습니다. 전체 목록은 준비 탭에 있습니다.</div>') +
+    '</div>';
 
   /* 아빠 주간 카드 — "이번 주 아내 몸에 일어나는 일 → 오늘 할 행동 하나".
      배우자 화면에서만, 이번 주에 해당하는 몸의 변화 중 가장 최근 시작된 것 한 장.
@@ -3999,18 +4104,29 @@ function viewToday() {
       })[0];
     if (dadPick) {
       var dwk = dadPick['해당주차'];
-      h += '<div class="dad">' +
+      h += '<div class="sec"><div class="dad">' +
         '<div class="dad-eyebrow">이번 주, 아내에게' + (dwk ? ' · ' + dwk.from + '주부터' : '') + '</div>' +
         '<div class="dad-title">' + esc(dadPick['제목']) + '</div>' +
         '<div class="dad-what">' + esc(dadPick['내용']) + '</div>' +
         (dadPick['출처'] && dadPick['출처'].name ? '<div class="dad-src">' + esc(dadPick['출처'].name) + '</div>' : '') +
         '<div class="askwrap" style="margin-bottom:0"><div class="ask-head">오늘 하나</div>' +
         '<div class="dad-act">' + esc(dadPick['아빠오늘하나']) + '</div></div>' +
-        '</div>';
+        '</div></div>';
     }
   }
 
-  h += nestCardHtml();
+  /* 내 돈 한 줄 — 합계와 열쇠 질문 하나. 판정은 혜택 탭과 같은 currentMoneyState() 다. */
+  h += todayMoneyCard();
+
+  /* 제도 변화 — 곧 시행분만 펼치고 나머지는 접는다 */
+  var chgSoon = CHG.filter(function (c) { return c.state === 'soon'; });
+  var chgRest = CHG.filter(function (c) { return c.state !== 'soon'; });
+  if (chgSoon.length) {
+    h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>곧 바뀌어요</h3>' +
+      '<span class="count">' + chgSoon.length + '</span></div>' + chgSoon.map(chgRow).join('') + '</div>';
+  }
+
+  h += '<div class="sec">' + nestCardHtml() + '</div>';
 
   if (profile.stage === 'pregnant' && D.weeks != null) {
     // 이번 주를 그림 한 장으로 — 만들기·공유 전부 기기 안에서 끝난다.
@@ -4018,27 +4134,14 @@ function viewToday() {
       '<button class="askbtn" data-sharecard="week">이번 주 카드 만들기</button></div>';
   }
 
-  if (open.fetal && GROWTH && GROWTH.efwG != null) {
-    h += '<div class="sec"><div class="detail" style="border-bottom:0;padding-left:0">' +
-      '<div class="lead">' + GROWTH.efwG + 'g 은 같은 주차 태아들의 ' + (FETAL.percentile || 50) + '번째 백분위, 곧 한가운데 값입니다. ' +
-      '손에 쥐면 생수 ' + GROWTH.efwG + 'mL 만큼입니다.</div>' +
-      '<div class="srcline">물 1mL 가 1g 이라는 정의로 환산한 것입니다 — 무게를 가늠하기 쉬우라고 덧붙인 것이지 아기 크기를 재는 기준은 아닙니다.</div>' +
-      '<div class="warn">이 숫자는 정상 범위가 아닙니다. 우리 아기가 이보다 크거나 작다고 해서 문제가 있다는 뜻이 아닙니다. ' +
-      '실제 판단은 초음파를 본 담당 의사만 할 수 있습니다.</div>' +
-      (FETAL.mustShow || []).map(function (t) { return '<div class="dl"><dd>· ' + esc(t) + '</dd></div>'; }).join('') +
-      (FETAL.source ? '<div class="srcline">' + esc(FETAL.source.name) + '</div>' +
-        goLinks([{ url: FETAL.source.url, label: '원 논문 보기' }]) : '') +
-      '</div></div>';
-  }
-
-  /* 이번 시기의 검사·진료 — 임신 중일 때만 */
+  /* 이번 시기의 검사·진료 — 임신 중일 때만. 첫 검사는 위 '이번 주 세 가지'에 이미 있다. */
   if (profile.stage === 'pregnant' && D.weeks != null) {
-    var tlNow = TL.filter(function (t) { return t.applicable === 'now'; });
+    var tlMore = tlNow.slice(1);
     var tlNext = TL.filter(function (t) { return t.applicable === 'upcoming'; })
       .sort(function (a, b) { return a.item.weekFrom - b.item.weekFrom; }).slice(0, 3);
-    if (tlNow.length) {
+    if (tlMore.length) {
       h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>' + D.weeks + '주에 받는 검사</h3>' +
-        '<span class="count">' + tlNow.length + '</span></div>' + tlNow.map(tlRow).join('') + '</div>';
+        '<span class="count">' + tlMore.length + '</span></div>' + tlMore.map(tlRow).join('') + '</div>';
     }
     if (tlNext.length) {
       h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>곧 받게 됩니다</h3>' +
@@ -4087,13 +4190,6 @@ function viewToday() {
     }
   }
 
-  /* 제도 변화 — '바뀌는 것' 탭이 하던 일을 카드로. 곧 시행분만 펼치고 나머지는 접는다 */
-  var chgSoon = CHG.filter(function (c) { return c.state === 'soon'; });
-  var chgRest = CHG.filter(function (c) { return c.state !== 'soon'; });
-  if (chgSoon.length) {
-    h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>곧 제도가 바뀝니다</h3>' +
-      '<span class="count">' + chgSoon.length + '</span></div>' + chgSoon.map(chgRow).join('') + '</div>';
-  }
   if (chgRest.length) {
     h += '<div class="sec"><button class="sec-head" data-fold="chg" aria-expanded="' + (fold.chg ? 'true' : 'false') + '">' +
       '<h3>그 밖의 제도 변화</h3><span class="count">' + chgRest.length + '</span>' +
@@ -4107,15 +4203,96 @@ function viewToday() {
   }
 
   // 원문 확인 문구는 할 일·신청 탭이 이미 말한다 — 오늘 탭은 한 줄이면 된다.
-  h += '<div class="foot">오늘 기준으로 계산한 값이라 날이 지나면 달라집니다. 전체 목록은 할 일·생활 탭에 있습니다.</div>';
+  h += '<div class="foot">오늘 기준으로 계산한 값이라 날이 지나면 달라집니다. 전체 목록은 준비·알아보기 탭에 있습니다.</div>';
   return h;
 }
 
-function viewTodo() {
-  // 'na' = 대상 조건이 맞지 않는 항목(고위험 아님·근로자 아님). 목록에도 수에도 넣지 않는다.
+/* ── 오늘 탭 부품 (2026-09 리디자인) ─────────────────────────────────────── */
+
+/* 히어로 오른쪽의 작은 둥지 — 둥지 카드와 같은 상태 계산(currentNest)·같은 토큰 색. */
+function heroNestSvg() {
+  return '<div class="hero-nest" aria-hidden="true">' + nestSceneSvg(currentNest(), nestTokenColors(), 104) + '</div>';
+}
+
+/* 이번 주 카드 한 장 — 체크포인트를 접힌 행으로. 준비물은 펼치지 않고 진행률만 말하고
+   준비 탭으로 보낸다(할 일 탭 한 곳에만 — 43차 감사). 완료 체크는 여기서도 된다. */
+function todayChkCard(c) {
+  var it = c.item, w = chkWhen(c), rowDone = !!done[it.id];
+  var chip;
+  if (c.state === 'now' && c.daysLeft != null && w.txt) {
+    chip = '<span class="tag ' + (w.cls === 'alert' ? 'rose' : 'peach') + '">' + esc(w.txt) + '</span>';
+  } else if (c.state === 'now') {
+    chip = '<span class="tag lime">지금</span>';
+  } else {
+    chip = '<span class="tag peach">' + (w.txt ? esc(w.txt + (w.unit ? ' ' + w.unit : '')) : '곧') + '</span>';
+  }
+  var sub = it.where || it.whatToDo || '';
+  if (it.steps && it.steps.length) {
+    var sdN = it.steps.filter(function (st) { return isDone(it.id + '/' + st.id); }).length;
+    sub = '준비물 ' + sdN + ' / ' + it.steps.length + ' 확인' + (it.where ? ' · ' + it.where : '');
+  }
+  return '<div class="item"><div class="row' + (rowDone ? ' done' : '') + '" style="align-items:center">' +
+    '<button class="chk' + (rowDone ? ' on' : '') + '" data-done="' + esc(it.id) + '" aria-pressed="' + (rowDone ? 'true' : 'false') +
+      '" aria-label="' + esc(it.name) + ' 완료 표시"><i>' + ICON.check + '</i></button>' +
+    '<button class="row-main" data-tab="todo" style="background:none;border:0;text-align:left" aria-label="' + esc(it.name) + ' — 준비 탭에서 보기">' +
+      '<div class="row-title">' + esc(it.name) + '</div>' +
+      '<div class="row-sub">' + esc(sub) + '</div>' +
+    '</button>' +
+    '<div class="row-side">' + chip + '</div></div></div>';
+}
+
+/* 내 돈 한 줄 — 합계 판정은 currentMoneyState() 한 곳, 열쇠 질문은 혜택 탭과 같은
+   unlockNoteHtml(). 문구도 혜택 탭 히어로와 같은 말을 쓴다(같은 개념은 같은 이름). */
+function todayMoneyCard() {
+  var st = currentMoneyState();
+  var head, body, note = '';
+  if (st.code === 'HAS_AMOUNT') {
+    head = '확인된 제도만 더한 금액';
+    body = '<div class="big">' + Math.round(st.totalWon / 10000).toLocaleString('ko-KR') + '<span class="big-unit">만원</span></div>';
+    note = st.partial
+      ? '여기까지는 <b>전국 공통 제도</b>만 더한 금액입니다. 지역을 알려주시면 우리 동네 제도까지 계산합니다.'
+      : unlockNoteHtml(st);
+  } else if (st.code === 'NO_REGION') {
+    head = '아직 계산하지 않았습니다';
+    body = '<div class="hero-say">지역을 알려주시면<br>우리 동네 금액부터 계산합니다</div>';
+    note = '<button class="askbtn" data-sheet="me">내 정보 입력하기</button>';
+  } else if (st.code === 'NEEDS_INPUT') {
+    head = '아직 계산하지 않았습니다';
+    body = '<div class="hero-say"><b>' + st.questionCount + '가지</b>만 더 알려주시면<br>' + st.needCount + '건을 판단할 수 있습니다</div>';
+    note = '모른다고 해서 해당 없음으로 접지 않습니다. 혜택 탭에서 항목을 열면 그 자리에서 답할 수 있습니다.';
+  } else if (st.code === 'NO_CASH_VALUE') {
+    head = '금액으로 환산할 수 없는 혜택만 있습니다';
+    body = '<div class="hero-say">' + st.noAmountCount + '가지</div>';
+  } else if (st.code === 'NOT_YET') {
+    head = '지금 단계에 해당하는 금액 제도가 없습니다';
+    body = '<div class="hero-say">출산 후 ' + st.futureCount + '건이 기다립니다</div>';
+  } else {
+    head = '확인된 제도만 더한 금액';
+    body = '<div class="big">0<span class="big-unit">만원</span></div>';
+    note = '빠진 정보 없이 계산한 결과입니다 — 지금 조건에 맞는 금액 제도가 없습니다.';
+  }
+  var leftN = journeyCounts().leftN;
+  return '<div class="sec"><div class="item money-card">' +
+    '<div class="row" style="align-items:center"><div class="row-main">' +
+      '<div class="kv-label">' + head + '</div>' + body +
+      (leftN ? '<div class="row-sub">지금 신청 가능 ' + leftN + '건</div>' : '') +
+    '</div>' +
+    '<div class="row-side"><button class="tag tint" data-tab="money" style="min-height:34px">혜택 보기 →</button></div></div>' +
+    (note ? '<div class="askwrap" style="margin:0 0 12px"><div class="hero-note" style="margin:0">' + note + '</div></div>' : '') +
+    '</div></div>';
+}
+
+/* 내 몫의 할 일 수 — 할 일 탭 히어로와 오늘 탭 "준비 탭에 N건"이 같은 수를 말한다.
+   'na' = 대상 조건이 맞지 않는 항목(고위험 아님·근로자 아님). 목록에도 수에도 넣지 않는다. */
+function myOpenCount() {
   var mine = CHK.filter(function (c) { return isMine(c.item.who) && c.state !== 'past' && c.state !== 'na'; });
   var mineDone = mine.filter(function (c) { return isDone(c.item.id); }).length;
-  var left = mine.length - mineDone;
+  return { mine: mine, done: mineDone, left: mine.length - mineDone };
+}
+
+function viewTodo() {
+  var mc = myOpenCount();
+  var mine = mc.mine, mineDone = mc.done, left = mc.left;
   var h = '<div class="hero" style="padding-bottom:10px"><div class="hero-row">' +
     '<div class="hero-side" style="gap:6px"><div class="kv-label">내 몫의 할 일</div>' +
     '<div class="big">' + left + '<span class="big-unit">건 남음</span></div>' +
@@ -4269,7 +4446,7 @@ function viewLife() {
   var prep = byDrawer('prep');
   var prepChk = CHK.filter(function (c) { return (c.item.stages || []).indexOf('preparing') >= 0; });
   h += lifeDrawer('life_prep', '임신 준비',
-    '임신 전에 알아둘 것과 챙길 것입니다. 체크 항목은 할 일 탭과 같은 목록이라 완료 표시가 함께 갑니다.',
+    '임신 전에 알아둘 것과 챙길 것입니다. 체크 항목은 준비 탭과 같은 목록이라 완료 표시가 함께 갑니다.',
     prep.map(lifeRow).join('') + prepChk.map(chkRow).join(''),
     prep.length + prepChk.length);
 
@@ -4352,11 +4529,11 @@ var BUCKETS = [
   // 따로 신청하지 않는다 — 자동 적용되거나 다른 청구 때 함께 처리된다.
   { key: 'auto',     title: '따로 신청하지 않아도 됩니다', bar: 'off' }
 ];
-function viewJourney() {
-  // 머리의 숫자는 '지금 신청할 수 있는 것'만 센다.
-  // 아직 단계가 오지 않은 제도까지 더하면 숫자가 거짓말을 한다 — 임신 중인 사람에게
-  // '신청할 수 있는 제도'라고 적어 둔 수의 절반 가까이가 출산 후에나 되는 것이었다.
-  // 따로 신청하지 않는 것(auto)도 '신청할 수 있는 것'의 수에서 뺀다.
+/* 신청 묶음의 머릿수 — 신청 탭 히어로와 오늘 탭 '내 돈 한 줄'이 같은 수를 말한다.
+   머리의 숫자는 '지금 신청할 수 있는 것'만 센다. 아직 단계가 오지 않은 제도까지 더하면
+   숫자가 거짓말을 한다 — 임신 중인 사람에게 '신청할 수 있는 제도'라고 적어 둔 수의
+   절반 가까이가 출산 후에나 되는 것이었다. 따로 신청하지 않는 것(auto)도 뺀다. */
+function journeyCounts() {
   var canApply = JOURNEY.filter(function (j) { return j.bucket !== 'notyet' && j.bucket !== 'auto'; });
   /* 둘을 합쳐 세고 "아직 신청할 수 없다"고 한 줄로 말하면 거짓이 된다 —
      따로 신청하지 않아도 되는 것(auto)은 못 하는 것이 아니라 할 필요가 없는 것이다.
@@ -4370,18 +4547,27 @@ function viewJourney() {
   var certain = canApply.filter(function (j) { return CERTAIN[j.bucket]; });
   var checkN = canApply.length - certain.length;
   var appliedN = certain.filter(function (j) { return isDone('apply_' + j.id); }).length;
-  var leftN = certain.length - appliedN;
-  var h = '<div class="hero" style="padding-bottom:14px"><div class="hero-row">' +
-    '<div style="display:flex;align-items:baseline"><div class="big">' + leftN + '</div><div class="big-unit">건</div></div>' +
-    '<div class="hero-side"><div class="kv-label">' + (appliedN ? '아직 신청하지 않은 제도' : '지금 신청할 수 있는 제도') + '</div>' +
-    '<div class="hero-note">' +
-    (appliedN ? appliedN + '건은 신청을 마쳤습니다' : '기한이 가까운 순서로 정리했습니다') +
+  return { canApply: canApply, notYetN: notYetN, autoN: autoN, certain: certain,
+    checkN: checkN, appliedN: appliedN, leftN: certain.length - appliedN };
+}
+
+/* '지금 신청' 칩의 머리말 — 옛 신청 탭 히어로가 하던 말. 수는 journeyCounts() 하나에서 온다. */
+function applyNoteHtml(jc) {
+  var appliedN = jc.appliedN, checkN = jc.checkN, autoN = jc.autoN, leftN = jc.leftN, notYetN = jc.notYetN;
+  return '<div class="sec"><div class="secnote"><b>' + leftN + '건</b>' +
+    (appliedN ? ' 아직 신청하지 않았습니다 · ' + appliedN + '건은 신청을 마쳤습니다' : '을 지금 신청할 수 있습니다 — 기한이 가까운 순서로 정리했습니다') +
     (checkN ? '<br>' + checkN + '건은 신청 시점을 따로 확인해야 해 아래에 나눠 두었습니다' : '') +
-    (notYetN ? '<br>' + notYetN + '건은 아직 신청할 수 없어 아래에 접어 두었습니다' : '') +
+    (notYetN ? '<br>' + notYetN + '건은 아직 신청할 수 없어 <b>나중에</b> 칩에 두었습니다' : '') +
     (autoN ? '<br>' + autoN + '건은 따로 신청하지 않아도 됩니다' : '') +
-    '</div></div></div></div>';
-  if (!JOURNEY.length) return h + '<div class="empty">아직 해당하는 제도가 없습니다.<br>내 정보를 채우면 더 정확해집니다.</div>';
-  BUCKETS.forEach(function (b) {
+    '</div></div>';
+}
+
+/* 신청 묶음 목록 — 기한 축(BUCKETS)으로 묶어 그린다. 행은 제도 상세를 열 수 있다(제도 카드와
+   같은 programDetailHtml) — 진입 경로가 달라도 같은 정보를 본다.
+   forceOpen: 칩이 이미 범위를 골랐을 때(나중에 칩) 그 안에서는 접지 않는다. */
+function journeyBucketsHtml(buckets, byId, forceOpen) {
+  var h = '';
+  buckets.forEach(function (b) {
     var rows = JOURNEY.filter(function (j) { return j.bucket === b.key; });
     if (!rows.length) return;
     // 신청을 마친 것은 아래로 내린다. 지우지는 않는다 — 다시 확인하고 싶을 수 있다.
@@ -4395,6 +4581,7 @@ function viewJourney() {
        사람이 매번 그 위를 지나가야 했다.
        기한이 걸린 묶음은 절대 접지 않는다 — 지각은 숨길 일이 아니라 지금 손쓸 일이다. */
     var foldable = b.key === 'notyet' || b.key === 'auto';
+    if (forceOpen) foldable = false;
     // 열림 상태를 다른 탭과 섞지 않는다 — 'later' 는 할 일 탭에도 있는 키다.
     var fkey = 'jn_' + b.key;
     var isOpen = !foldable || !!fold[fkey];
@@ -4423,13 +4610,16 @@ function viewJourney() {
       else if (b.key === 'unknownDeadline') { when = '미확인'; }
       var jkey = 'apply_' + j.id;
       var jdone = isDone(jkey);
+      var r = byId ? byId(j.id) : null;
+      var pid = 'p_' + j.id;
       // 아직 신청이 성립하지 않는 항목(notyet)에는 '신청 완료' 체크를 주지
       // 않는다 — 신청 없이 완료 표시가 가능하면 기록이 거짓이 된다(30차).
       return '<div class="item"><div class="row' + (jdone ? ' done' : '') + '">' +
         (b.key === 'notyet' ? '' :
         '<button class="chk" data-done="' + esc(jkey) + '" aria-pressed="' + (jdone ? 'true' : 'false') +
         '" aria-label="' + esc(j.name) + ' 신청 완료 표시"><i>' + ICON.check + '</i></button>') +
-        '<div class="row-main">' +
+        (r ? '<button class="row-main" data-open="' + esc(pid) + '" aria-expanded="' + (open[pid] ? 'true' : 'false') + '" style="background:none;border:0;text-align:left">'
+           : '<div class="row-main">') +
         '<div class="row-title">' + esc(j.name) + '</div>' +
         (j.applyVia ? '<div class="row-sub">' + esc(j.applyVia) + '</div>' : '') +
         /* 무엇을 못 받는지 말한다 — 묶음 제목만으로는 "일부"가 무엇인지 알 수 없다.
@@ -4437,7 +4627,7 @@ function viewJourney() {
         (b.key === 'softlost' && j.deadline && j.deadline.softLoss
           ? '<div class="row-sub loss">' + esc(j.deadline.softLoss) + '</div>' : '') +
         (jdone && doneBy(jkey) ? '<div class="row-meta"><span class="tag done-by">' + ROLE_LABEL[doneBy(jkey)] + '가 신청</span></div>' : '') +
-        '</div><div class="row-side">' +
+        (r ? '</button>' : '</div>') + '<div class="row-side">' +
         (when ? '<div class="row-when ' + cls + '">' + esc(when) + '</div>' : '') +
         (unit ? '<div class="row-when-unit">' + esc(unit) + '</div>' : '') +
         (j.confirmedAmount != null ? '<div class="row-money">' + esc(ENG.won(j.confirmedAmount)) + '</div>' : '') +
@@ -4445,7 +4635,8 @@ function viewJourney() {
         // '아직 신청할 수 없습니다' 항목에 '신청하러 가기'는 자기모순 — 안내로 부른다.
         goLinks([{ url: j.applyUrl, label: b.key === 'notyet' ? '안내 미리 보기' : '신청하러 가기' }]) +
         // 기준일을 묻는 행 — 제도 카드·할 일 탭과 같은 질문 상자를 그 자리에 붙인다.
-        (b.key === 'askDate' && j.missingFields && j.missingFields.length ? askBlock(j) : '') + '</div>';
+        (b.key === 'askDate' && j.missingFields && j.missingFields.length ? askBlock(j) : '') +
+        (r && open[pid] ? programDetailHtml(r) : '') + '</div>';
     }).join('');
     h += '</div>';
   });
@@ -4750,67 +4941,71 @@ function moneyRow(r, showAmount) {
       { url: r.program.applyUrl || r.program.onlineApplyUrl, label: '신청하러 가기' },
       { url: r.program.source && r.program.source.url, label: '제도 안내 원문' }
     ]) + '</div>';
-  if (open[pid]) {
-    var g = r.program;
-    h += '<div class="detail">';
-    if (g.summary) h += '<div class="lead">' + esc(g.summary) + '</div>';
+  if (open[pid]) h += programDetailHtml(r);
+  return h;
+}
 
-    var dl = function (label, value) {
-      return value ? '<div class="dl"><dt>' + label + '</dt><dd>' + esc(value) + '</dd></div>' : '';
-    };
-    // 왜 해당되지 않는지 — 엔진이 짚은 조건만 말한다. UI 가 이유를 지어내지 않는다.
-    if (r.status === 'ineligible' && !r.superseded) {
-      if (r.regionFail && g.region) {
-        var rgTxt = g.region.sigungu ? g.region.sido + ' ' + g.region.sigungu + ' 제도입니다'
-          : (g.region.sigungus && g.region.sigungus.length) ? g.region.sido + ' 일부 시·군·구 한정 제도입니다'
-          : g.region.sido + ' 제도입니다';
-        h += dl('해당되지 않는 이유', '거주 지역이 다릅니다 — ' + rgTxt);
-      } else if (r.failedFields && r.failedFields.length) {
-        var flabels = [];
-        r.failedFields.forEach(function (f) {
-          var lb = FIELD_LABEL[f];
-          if (lb && flabels.indexOf(lb) < 0) flabels.push(lb);
-        });
-        if (flabels.length) {
-          h += dl('해당되지 않는 이유', '맞지 않는 조건: ' + flabels.join(' · ') +
-            ' — 상황이 바뀌었다면 내 정보를 고쳐 주세요');
-        }
+/* 제도 상세 본문 — 혜택 카드(moneyRow)와 '지금 신청' 행이 같은 것을 연다.
+   진입 경로가 달라도 같은 정보를 본다(2026-09-10 리디자인). */
+function programDetailHtml(r) {
+  var g = r.program;
+  var h = '<div class="detail">';
+  if (g.summary) h += '<div class="lead">' + esc(g.summary) + '</div>';
+
+  var dl = function (label, value) {
+    return value ? '<div class="dl"><dt>' + label + '</dt><dd>' + esc(value) + '</dd></div>' : '';
+  };
+  // 왜 해당되지 않는지 — 엔진이 짚은 조건만 말한다. UI 가 이유를 지어내지 않는다.
+  if (r.status === 'ineligible' && !r.superseded) {
+    if (r.regionFail && g.region) {
+      var rgTxt = g.region.sigungu ? g.region.sido + ' ' + g.region.sigungu + ' 제도입니다'
+        : (g.region.sigungus && g.region.sigungus.length) ? g.region.sido + ' 일부 시·군·구 한정 제도입니다'
+        : g.region.sido + ' 제도입니다';
+      h += dl('해당되지 않는 이유', '거주 지역이 다릅니다 — ' + rgTxt);
+    } else if (r.failedFields && r.failedFields.length) {
+      var flabels = [];
+      r.failedFields.forEach(function (f) {
+        var lb = FIELD_LABEL[f];
+        if (lb && flabels.indexOf(lb) < 0) flabels.push(lb);
+      });
+      if (flabels.length) {
+        h += dl('해당되지 않는 이유', '맞지 않는 조건: ' + flabels.join(' · ') +
+          ' — 상황이 바뀌었다면 내 정보를 고쳐 주세요');
       }
     }
-    h += dl('지원 대상', g.eligibilityText);
-    h += dl('지원 금액', g.amountText);
-    if (r.amount && r.amount.note) h += dl('내 조건으로 계산하면', r.amount.note);
-    if (r.amount && r.amount.value == null && r.amount.reason) h += dl('금액을 정할 수 없는 이유', r.amount.reason);
-    h += extraBenefitsHtml(g);
-    // 모른다고만 하고 끝내면 사용자는 거기서 막힌다. 어디에 물어야 하는지까지 말한다.
-    h += askWhereHtml(r);
-    h += dl('선정 기준', g.selectionText);
-    h += dl('신청 기한', deadlineLine(r, g));
-    // 바우처를 언제까지 쓸 수 있는지는 신청 기한과 다른 사실이다. 한 줄에 두면
-    // "신청 마감이 2년 남았다"로 읽힌다.
-    if (g.usageBy && g.usageBy.text) h += dl('사용 기한', g.usageBy.text);
-    // 급여를 청구하는 기한은 제도를 쓰는 기한과 다른 사실이다(45차).
-    h += dl('급여 신청 기한', payDeadlineLine(r, g));
-    // 개편 예고 — 데이터에 있던 것을 이제야 보여준다(32차: 죽은 필드였다).
-    if (g.pendingChange && g.pendingChange.text) h += '<div class="warn">' + esc(g.pendingChange.text) + '</div>';
-    h += dl('필요 서류', g.docsText);
-    h += dl('신청 방법', g.applyVia);
-    // 배지에 다 담지 못한 사정 — 순위마다 분할 기간이 다른 제도가 흔하다.
-    if (g.payout && g.payout.detailText) h += dl('나눠 받는 기간', g.payout.detailText);
-    h += dl('지급 시기', g.paymentScheduleText);
-    h += dl('유의 사항', g.notes);
-    h += dl('법적 근거', g.legalBasis);
-    if (g.evidence && g.evidence.quote) h += '<div class="quote">&ldquo;' + esc(g.evidence.quote) + '&rdquo;</div>';
-    if (g.source) {
-      h += '<div class="srcline">' + esc(g.source.name || '') +
-        (g.source.checkedAt ? ' · ' + esc(g.source.checkedAt) + ' 확인' : '') + '</div>';
-    }
-    // 데이터 오류 제보 — 이 DB 의 생명은 정확성이다. 다르면 바로 알릴 길을 연다.
-    h += '<div class="golinks"><a class="golink" href="' + esc(reportHref(g)) + '">공식 정보와 다른가요? 알려주세요</a></div>';
-    if (r.status === 'unknown') h += askBlock(r) + unknownWhy(r);
-    h += '</div>';
   }
-  return h;
+  h += dl('지원 대상', g.eligibilityText);
+  h += dl('지원 금액', g.amountText);
+  if (r.amount && r.amount.note) h += dl('내 조건으로 계산하면', r.amount.note);
+  if (r.amount && r.amount.value == null && r.amount.reason) h += dl('금액을 정할 수 없는 이유', r.amount.reason);
+  h += extraBenefitsHtml(g);
+  // 모른다고만 하고 끝내면 사용자는 거기서 막힌다. 어디에 물어야 하는지까지 말한다.
+  h += askWhereHtml(r);
+  h += dl('선정 기준', g.selectionText);
+  h += dl('신청 기한', deadlineLine(r, g));
+  // 바우처를 언제까지 쓸 수 있는지는 신청 기한과 다른 사실이다. 한 줄에 두면
+  // "신청 마감이 2년 남았다"로 읽힌다.
+  if (g.usageBy && g.usageBy.text) h += dl('사용 기한', g.usageBy.text);
+  // 급여를 청구하는 기한은 제도를 쓰는 기한과 다른 사실이다(45차).
+  h += dl('급여 신청 기한', payDeadlineLine(r, g));
+  // 개편 예고 — 데이터에 있던 것을 이제야 보여준다(32차: 죽은 필드였다).
+  if (g.pendingChange && g.pendingChange.text) h += '<div class="warn">' + esc(g.pendingChange.text) + '</div>';
+  h += dl('필요 서류', g.docsText);
+  h += dl('신청 방법', g.applyVia);
+  // 배지에 다 담지 못한 사정 — 순위마다 분할 기간이 다른 제도가 흔하다.
+  if (g.payout && g.payout.detailText) h += dl('나눠 받는 기간', g.payout.detailText);
+  h += dl('지급 시기', g.paymentScheduleText);
+  h += dl('유의 사항', g.notes);
+  h += dl('법적 근거', g.legalBasis);
+  if (g.evidence && g.evidence.quote) h += '<div class="quote">&ldquo;' + esc(g.evidence.quote) + '&rdquo;</div>';
+  if (g.source) {
+    h += '<div class="srcline">' + esc(g.source.name || '') +
+      (g.source.checkedAt ? ' · ' + esc(g.source.checkedAt) + ' 확인' : '') + '</div>';
+  }
+  // 데이터 오류 제보 — 이 DB 의 생명은 정확성이다. 다르면 바로 알릴 길을 연다.
+  h += '<div class="golinks"><a class="golink" href="' + esc(reportHref(g)) + '">공식 정보와 다른가요? 알려주세요</a></div>';
+  if (r.status === 'unknown') h += askBlock(r) + unknownWhy(r);
+  return h + '</div>';
 }
 /* 신청 기한 한 줄 — 종류에 맞는 말을 한다.
    기한을 확인하지 못한 제도에 아무 말도 하지 않으면 '기한 없음'으로 읽힌다.
@@ -4856,19 +5051,6 @@ function unknownWhy(r) {
   var t = UNKNOWN_WHY[r.unknownReason];
   return t ? '<div class="fieldnote">' + t + '</div>' : '';
 }
-function moneySection(key, title, rows, showAmount, note) {
-  if (!rows.length) return '';
-  var isOpen = !!fold[key];
-  var h = '<div class="sec"><button class="sec-head" data-fold="' + key + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-    '<h3>' + title + '</h3><span class="count">' + rows.length + '</span>' +
-    '<span class="chev' + (isOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
-  if (isOpen) {
-    if (note) h += '<div class="secnote">' + note + '</div>';
-    h += rows.map(function (r) { return moneyRow(r, showAmount); }).join('');
-  }
-  return h + '</div>';
-}
-
 /* ── 문의·제보 — 운영자 지정 주소(2026-08-27). 제도 표시가 공식 정보와 다르다는
    제보를 받는다. 본문에 제도 id·지역·확인일·원문 주소를 미리 채워, 제보자가
    설명을 덜 쓰고도 운영자가 바로 재확인할 수 있게 한다. 사용자 개인정보는
@@ -5365,6 +5547,35 @@ function currentMoneyState() {
     hasRegion: profile.sido != null && (profile.sigungu != null || !((SIGUNGU.bySido && SIGUNGU.bySido[profile.sido]) || []).length)
   });
 }
+/* 가장 큰 자물쇠 하나를 금액과 함께 묻는 문장 — 혜택 탭 히어로와 오늘 탭 '내 돈 한 줄'이
+   같은 것을 쓴다. 아홉 가지를 한꺼번에 말하면 부담스럽고, 무엇보다 얼마가 걸렸는지 알 수 없다.
+   나머지는 항목마다 그 자리에서 묻는다. */
+function unlockNoteHtml(st) {
+  var note = '';
+  var unlock = biggestUnlock();
+  if (unlock && unlock.won > 0) {
+    // "더 계산됩니다"라고 하면 받는 돈처럼 읽힌다. 조건에 따라 0원일 수도 있는 금액이므로
+    // 우리가 하는 일 그대로 적는다 — 판단이다.
+    note = '<b>' + esc(FIELD_LABEL[unlock.field] || unlock.field) + '</b>만 알려주시면 ' +
+      unlock.n + '건 · 최대 <b>' + ENG.won(unlock.won) + '</b>이 합계에 더해집니다.';
+    // 그 자리에서 답하게 한다. 고르는 질문이면 선택지를 펴고,
+    // 숫자로 답할 질문(거주 기간 같은)이면 내 정보로 데려간다 —
+    // data-ask 는 값을 함께 실어야 동작하므로 빈 버튼을 두면 눌러도 아무 일이 없다.
+    var ask = FIELD_ASK[unlock.field];
+    if (ask && ask.opts && ask.opts.length) {
+      note += '<div class="ask-q" style="margin-top:9px">' + esc(ask.q) + '</div><div class="ask-opts">' +
+        ask.opts.map(function (o) {
+          return '<button class="askbtn" data-ask="' + esc(unlock.field) + '" data-val="' + esc(o[1]) + '">' + esc(o[0]) + '</button>';
+        }).join('') + '</div>';
+    } else {
+      note += ' <button class="askbtn" data-sheet="me">내 정보에서 알려주기</button>';
+    }
+  } else if (st.questionCount > 0) {
+    note = '<b>' + st.questionCount + '가지</b>를 더 알려주시면 판단을 미뤄 둔 ' + st.needCount + '건까지 계산합니다.';
+  }
+  return note;
+}
+
 function moneyHeroHtml() {
   var st = currentMoneyState();
   var head, body, note = '';
@@ -5384,31 +5595,7 @@ function moneyHeroHtml() {
     // 지역이 없으면 남은 보류 건수를 말하지 않는다 — 전국 모든 지자체 제도가
     // 섞여 들어가 '284건'처럼 답할 수 없는 수가 된다.
     if (st.partial) note = '여기까지는 <b>전국 공통 제도</b>만 더한 금액입니다. 지역을 알려주시면 우리 동네 제도까지 계산합니다.';
-    else {
-      // 아홉 가지를 한꺼번에 말하면 부담스럽고, 무엇보다 얼마가 걸렸는지 알 수 없다.
-      // 가장 큰 자물쇠 하나만 금액과 함께 묻는다. 나머지는 항목마다 그 자리에서 묻는다.
-      var unlock = biggestUnlock();
-      if (unlock && unlock.won > 0) {
-        // "더 계산됩니다"라고 하면 받는 돈처럼 읽힌다. 조건에 따라 0원일 수도 있는 금액이므로
-        // 우리가 하는 일 그대로 적는다 — 판단이다.
-        note = '<b>' + esc(FIELD_LABEL[unlock.field] || unlock.field) + '</b>만 알려주시면 ' +
-          unlock.n + '건 · 최대 <b>' + ENG.won(unlock.won) + '</b>이 합계에 더해집니다.';
-        // 그 자리에서 답하게 한다. 고르는 질문이면 선택지를 펴고,
-        // 숫자로 답할 질문(거주 기간 같은)이면 내 정보로 데려간다 —
-        // data-ask 는 값을 함께 실어야 동작하므로 빈 버튼을 두면 눌러도 아무 일이 없다.
-        var ask = FIELD_ASK[unlock.field];
-        if (ask && ask.opts && ask.opts.length) {
-          note += '<div class="ask-q" style="margin-top:9px">' + esc(ask.q) + '</div><div class="ask-opts">' +
-            ask.opts.map(function (o) {
-              return '<button class="askbtn" data-ask="' + esc(unlock.field) + '" data-val="' + esc(o[1]) + '">' + esc(o[0]) + '</button>';
-            }).join('') + '</div>';
-        } else {
-          note += ' <button class="askbtn" data-sheet="me">내 정보에서 알려주기</button>';
-        }
-      } else if (st.questionCount > 0) {
-        note = '<b>' + st.questionCount + '가지</b>를 더 알려주시면 판단을 미뤄 둔 ' + st.needCount + '건까지 계산합니다.';
-      }
-    }
+    else note = unlockNoteHtml(st);   // 오늘 탭 '내 돈 한 줄'과 같은 질문 — 한 곳에서만 만든다
   } else if (st.code === 'NO_REGION') {
     head = '아직 계산하지 않았습니다';
     body = '<div class="hero-say">지역을 알려주시면<br>우리 동네 금액부터 계산합니다</div>';
@@ -5440,18 +5627,12 @@ function moneyHeroHtml() {
 
 function viewMoney() {
   var h = moneyHeroHtml();
-  h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>지금 확정된 것</h3><span class="count">' + EV.counts.confirmed + '</span></div>' +
-    // 금액이 있는 제도 171건 가운데 100건이 조건에 따라 달라진다(거주 기간만 56건).
-    // 이 사실은 맨 아래 각주가 아니라 숫자 바로 옆에 있어야 한다 — 각주는 아무도 읽지 않는다.
-    (EV.confirmed.length ? '<div class="secnote">금액은 <b>출생 순위·거주 기간·소득</b>과 신청 시점의 예산에 따라 달라집니다. ' +
-      '항목을 열면 무엇을 근거로 계산했는지 볼 수 있습니다.</div>' : '') +
-    (EV.confirmed.length ? EV.confirmed.map(function (r) { return moneyRow(r, true); }).join('')
-      : '<div class="empty" style="padding:20px 0">아직 확정된 제도가 없습니다.<br>내 정보를 채우면 더 정확해집니다.</div>') + '</div>';
+  var jc = journeyCounts();
   /* 우리 동네가 주는 것 — 227곳을 채운 값이 가장 잘 드러나는 자리.
      지금까지 지역 제도는 상태별 그룹에 흩어져 있어서, "우리 군이 뭘 주지"라는
      물음에 답하는 자리가 없었다. 한 사람이 보는 지역 제도는 중앙값 3건이라
-     탭을 따로 낼 일은 아니고(227곳 중 163곳이 3건 이하), 접히는 묶음이면 족하다.
-     아래 상태별 목록에서 빼지는 않는다 — 빼면 "지금 확정된 것"이 거짓이 된다. */
+     탭을 따로 낼 일은 아니고(227곳 중 163곳이 3건 이하), 칩 하나면 족하다.
+     다른 칩에서 빼지는 않는다 — 빼면 "확정"이 거짓이 된다. */
   var myRegionRows = EV.results.filter(function (r) {
     var rg = r.program.region;
     if (!rg || !profile.sido) return false;
@@ -5462,74 +5643,143 @@ function viewMoney() {
     }
     return rg.sido === profile.sido;
   });
-  if (myRegionRows.length) {
-    var placeName = profile.sigungu ? profile.sido + ' ' + profile.sigungu : profile.sido;
-    h += moneySection('myregion', '우리 동네가 주는 것', myRegionRows, true,
-      '<b>' + esc(placeName) + '</b>이 따로 주는 것만 모았습니다. 같은 항목이 아래 상태별 목록에도 나옵니다.');
-  }
-
   // 조건부를 한 묶음에 뭉쳐 두면 '지금 못 받는 이유'가 서로 다른 것들이 섞인다.
   // 임신 중 46건 중 36건이 '아직 단계가 오지 않아서'였고, 나머지가 상한액이거나
   // 금액으로 환산할 수 없는 것이었다. 사용자가 할 수 있는 일이 서로 다르므로 나눈다.
   var condNow = EV.conditional.filter(function (r) { return r.status !== 'future'; });
   var condLater = EV.conditional.filter(function (r) { return r.status === 'future'; });
-  h += moneySection('cond', '합계에 넣지 않은 것', condNow, true,
-    '지금 해당하지만 금액을 합계에 넣지 못한 제도입니다. 상한액만 있거나, 현물·무료 진료처럼 금액으로 환산할 수 없거나, 저희가 원문으로 확인하지 못한 것입니다. 이유는 항목마다 적어 두었습니다.');
-  h += moneySection('condLater', '아직 내 차례가 아닙니다', condLater, true,
-    '출산 후에 해당하는 제도입니다. 지금은 신청할 수 없고, 단계가 되면 위쪽으로 올라옵니다.');
+  /* '나중에' = 신청 묶음의 '아직 신청할 수 없습니다'(단계가 오지 않았거나 접수가 열리지
+     않은 것). 조건부 가운데 단계가 오지 않은 것은 시행 전 제도만 빼고 전부 그 묶음에
+     있으므로(엔진 journeyFor 는 시행 전만 거른다), 남는 것만 따로 붙여 하나도 잃지 않는다. */
+  var notyetIds = {};
+  JOURNEY.forEach(function (j) { if (j.bucket === 'notyet') notyetIds[j.id] = 1; });
+  var laterExtra = condLater.filter(function (r) { return !notyetIds[r.program.id]; });
   // 같은 '판단 보류'라도 공이 누구에게 있는지가 다르다. 열어도 물어볼 것이 없는
-  // 항목을 '정보를 더 주시면'에 두면, 사용자는 무엇을 더 주라는 건지 알 수 없다.
+  // 항목을 '답이 필요해요'에 두면, 사용자는 무엇을 더 주라는 건지 알 수 없다.
   // 그 넷은 지역이 특정되지 않은 제도라, 모자란 것은 사용자 입력이 아니라 우리 데이터다.
   var needAsk = needAskable();
   var needOurs = EV.needsInput.filter(function (r) { return (r.missingFields || []).length === 0; });
-  h += moneySection('need', '정보를 더 주시면 판단할 수 있습니다', needAsk, false,
-    '조건 하나를 몰라 판단을 보류한 제도입니다. 모른다고 해서 해당 없음으로 접지 않습니다. 항목을 열면 부족한 값을 그 자리에서 입력할 수 있습니다.');
-  h += moneySection('needOurs', '저희가 아직 확인하지 못했습니다', needOurs, false,
-    '조건을 확정하려면 공식 원문에 있어야 할 것이 비어 있는 제도입니다. ' +
-    '모자란 것이 사용자 쪽 정보가 아니라 저희 쪽이라 따로 둡니다 — 항목마다 무엇을 확인하지 못했는지 적어 두었고, 확인되는 대로 위로 올라옵니다.');
-
-  /* 한 번에 신청 — 만들어 두고 안 꺼냈던 통합신청 묶음(행복출산 등) */
-  var OS = ENG.onestopFor(ONESTOP, EV);
-  var osServices = OS.services.filter(function (s) { return s.appliesCount > 0; });
-  if (osServices.length) {
-    var osOpen = !!fold.onestop;
-    h += '<div class="sec"><button class="sec-head" data-fold="onestop" aria-expanded="' + (osOpen ? 'true' : 'false') + '">' +
-      '<h3>한 번에 신청</h3><span class="count">' + osServices.length + '</span>' +
-      '<span class="chev' + (osOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
-    if (osOpen) {
-      h += '<div class="secnote">따로따로 신청하지 않아도 되는 묶음입니다. 묶음 하나를 신청하면 아래 항목들이 함께 접수됩니다.</div>';
-      osServices.forEach(function (s) {
-        var oid = 'os_' + s.onestop.id;
-        var inc = s.items.filter(function (i) { return i.applies; });
-        h += '<div class="item"><button class="row" data-open="' + esc(oid) + '" style="background:none;border:0">' +
-          '<div class="row-main"><div class="row-title">' + esc(s.onestop.name) + '</div>' +
-          '<div class="row-sub">내게 해당하는 ' + inc.length + '건이 이 묶음으로 신청됩니다</div></div></button>';
-        if (open[oid]) {
-          h += '<div class="detail">' +
-            (s.onestop.summary ? '<div class="lead">' + esc(s.onestop.summary) + '</div>' : '') +
-            inc.map(function (i) { return '<div class="dl"><dd>· ' + esc(i.label) + '</dd></div>'; }).join('') +
-            (s.onestop.applyVia ? '<div class="dl"><dt>신청 방법</dt><dd>' + esc(s.onestop.applyVia) + '</dd></div>' : '') +
-            (s.onestop.caution ? '<div class="warn">' + esc(s.onestop.caution) + '</div>' : '') +
-            (s.onestop.source ? '<div class="srcline">' + esc(s.onestop.source.name) + '</div>' +
-              goLinks([{ url: s.onestop.source.url, label: '안내 원문' }]) : '') +
-            '</div>';
-        }
-        h += '</div>';
-      });
-    }
-    h += '</div>';
-  }
-
   /* 해당 없는 이유 — 침묵하지 않는다. 내 지역·전국 제도만 추려 이유와 함께 보여준다 */
   var inMyRegion = function (r) { var rg = r.program.region; return !rg || rg.sido === profile.sido; };
   var skipped = EV.expired.concat(EV.excluded.filter(inMyRegion));
-  h += moneySection('skip', '나는 해당이 없는 것', skipped, false,
-    '내 지역·전국 제도 가운데 조건이 맞지 않거나 시기·기한이 지난 것입니다. 왜 빠졌는지 항목마다 표시해 두었습니다 — 상황이 달라졌다면 내 정보를 고쳐 보세요.');
+
+  /* 칩 한 줄 — 옛 '신청' 탭(기한 축)과 '혜택' 탭(확정도 축)이 같은 제도를 두 번 늘어놓던
+     것을 한 화면의 칩으로 접는다(2026-09-10 리디자인). 기한이 걸린 묶음은 전부 '지금 신청'
+     안에 있고 그 안에서는 접지 않는다 — 지각은 숨길 일이 아니라 지금 손쓸 일이다. */
+  var CHIPS = [
+    ['apply', '지금 신청', jc.leftN],
+    ['confirmed', '확정', EV.counts.confirmed],
+    ['region', '우리 동네', myRegionRows.length],
+    ['need', '답이 필요해요', needAsk.length + needOurs.length],
+    ['cond', '합계 밖', condNow.length],
+    ['later', '나중에', jc.notYetN + laterExtra.length],
+    ['skip', '해당 없음', skipped.length]
+  ];
+  if (!CHIPS.some(function (c) { return c[0] === moneyChip; })) moneyChip = 'apply';
+  h += '<div class="chips" role="group" aria-label="제도 보기">' + CHIPS.map(function (c) {
+    var on = moneyChip === c[0];
+    return '<button class="chip' + (on ? ' on' : '') + '" data-chip="' + c[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+      c[1] + (c[2] ? ' <b class="num">' + c[2] + '</b>' : '') + '</button>';
+  }).join('') + '</div>';
+
+  var byId = function (id) { return EV.results.find(function (r) { return r.program.id === id; }); };
+  if (moneyChip === 'apply') {
+    h += applyNoteHtml(jc);
+    if (!JOURNEY.length) h += '<div class="empty">아직 해당하는 제도가 없습니다.<br>내 정보를 채우면 더 정확해집니다.</div>';
+    // '아직 신청할 수 없습니다'(notyet)는 '나중에' 칩이 맡는다 — 같은 제도를 두 번 세지 않는다.
+    h += journeyBucketsHtml(BUCKETS.filter(function (b) { return b.key !== 'notyet'; }), byId);
+    h += onestopHtml();
+  } else if (moneyChip === 'confirmed') {
+    h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>지금 확정된 것</h3><span class="count">' + EV.counts.confirmed + '</span></div>' +
+      // 금액이 있는 제도 171건 가운데 100건이 조건에 따라 달라진다(거주 기간만 56건).
+      // 이 사실은 맨 아래 각주가 아니라 숫자 바로 옆에 있어야 한다 — 각주는 아무도 읽지 않는다.
+      (EV.confirmed.length ? '<div class="secnote">금액은 <b>출생 순위·거주 기간·소득</b>과 신청 시점의 예산에 따라 달라집니다. ' +
+        '항목을 열면 무엇을 근거로 계산했는지 볼 수 있습니다.</div>' : '') +
+      (EV.confirmed.length ? EV.confirmed.map(function (r) { return moneyRow(r, true); }).join('')
+        : '<div class="empty" style="padding:20px 0">아직 확정된 제도가 없습니다.<br>내 정보를 채우면 더 정확해집니다.</div>') + '</div>';
+  } else if (moneyChip === 'region') {
+    var placeName = profile.sigungu ? profile.sido + ' ' + profile.sigungu : profile.sido;
+    h += moneyList('우리 동네가 주는 것', myRegionRows, true,
+      '<b>' + esc(placeName || '') + '</b>이 따로 주는 것만 모았습니다. 같은 항목이 다른 칩에도 나옵니다.',
+      profile.sido ? '우리 동네가 따로 주는 제도가 아직 없습니다.' : '지역을 알려주시면 우리 동네가 따로 주는 것을 모아 보여드립니다.');
+  } else if (moneyChip === 'need') {
+    h += moneyList('정보를 더 주시면 판단할 수 있습니다', needAsk, false,
+      '조건 하나를 몰라 판단을 보류한 제도입니다. 모른다고 해서 해당 없음으로 접지 않습니다. 항목을 열면 부족한 값을 그 자리에서 입력할 수 있습니다.',
+      needOurs.length ? '' : '답을 기다리는 제도가 없습니다.');
+    if (needOurs.length) {
+      h += moneyList('저희가 아직 확인하지 못했습니다', needOurs, false,
+        '조건을 확정하려면 공식 원문에 있어야 할 것이 비어 있는 제도입니다. ' +
+        '모자란 것이 사용자 쪽 정보가 아니라 저희 쪽이라 따로 둡니다 — 항목마다 무엇을 확인하지 못했는지 적어 두었고, 확인되는 대로 위로 올라옵니다.', '');
+    }
+  } else if (moneyChip === 'cond') {
+    h += moneyList('합계에 넣지 않은 것', condNow, true,
+      '지금 해당하지만 금액을 합계에 넣지 못한 제도입니다. 상한액만 있거나, 현물·무료 진료처럼 금액으로 환산할 수 없거나, 저희가 원문으로 확인하지 못한 것입니다. 이유는 항목마다 적어 두었습니다.',
+      '합계 밖에 둔 제도가 없습니다.');
+  } else if (moneyChip === 'later') {
+    h += '<div class="sec"><div class="secnote">출산 후에 해당하거나 접수가 아직 열리지 않은 제도입니다. 지금은 신청할 수 없고, 단계가 되면 <b>지금 신청</b> 칩으로 올라옵니다.</div></div>';
+    if (!jc.notYetN && !laterExtra.length) h += '<div class="empty" style="padding:20px 0">나중에 해당할 제도가 없습니다.</div>';
+    h += journeyBucketsHtml(BUCKETS.filter(function (b) { return b.key === 'notyet'; }), byId, true);
+    if (laterExtra.length) {
+      h += moneyList('아직 시행 전입니다', laterExtra, true,
+        '법령·조례의 시행일이 아직 오지 않은 제도입니다. 시행되면 위 묶음으로 올라옵니다.', '');
+    }
+  } else {
+    h += moneyList('나는 해당이 없는 것', skipped, false,
+      '내 지역·전국 제도 가운데 조건이 맞지 않거나 시기·기한이 지난 것입니다. 왜 빠졌는지 항목마다 표시해 두었습니다 — 상황이 달라졌다면 내 정보를 고쳐 보세요.',
+      '해당 없는 제도가 없습니다.');
+  }
 
   h += '<div class="foot"><b>합계에는 &lsquo;확인&rsquo; 등급 제도만 넣습니다.</b><br>' +
     '지자체 홈페이지나 조례 원문에서 금액을 직접 확인한 것만 더합니다. 추정 등급, 상한액, 조건부 항목은 합계에서 빼고 따로 보여드립니다. ' +
     '실제 지급액은 예산 사정과 신청 시점에 따라 달라질 수 있습니다.</div>';
   return h;
+}
+
+/* 칩 하나가 보여주는 제도 목록 — 접지 않는다(칩이 이미 범위를 골랐다).
+   비었을 때 할 말(emptyText)이 없으면 묶음째 그리지 않는다 — 0건 제목만 남기지 않는다. */
+function moneyList(title, rows, showAmount, note, emptyText) {
+  if (!rows.length && !emptyText) return '';
+  var h = '<div class="sec"><div class="sec-head" style="cursor:default"><h3>' + title + '</h3><span class="count">' + rows.length + '</span></div>';
+  if (rows.length) {
+    if (note) h += '<div class="secnote">' + note + '</div>';
+    h += rows.map(function (r) { return moneyRow(r, showAmount); }).join('');
+  } else {
+    h += '<div class="empty" style="padding:20px 0">' + emptyText + '</div>';
+  }
+  return h + '</div>';
+}
+
+/* 한 번에 신청 — 통합신청 묶음(행복출산 등). '지금 신청' 칩의 마지막 묶음이다. */
+function onestopHtml() {
+  var OS = ENG.onestopFor(ONESTOP, EV);
+  var osServices = OS.services.filter(function (s) { return s.appliesCount > 0; });
+  if (!osServices.length) return '';
+  var osOpen = !!fold.onestop;
+  var h = '<div class="sec"><button class="sec-head" data-fold="onestop" aria-expanded="' + (osOpen ? 'true' : 'false') + '">' +
+    '<h3>한 번에 신청</h3><span class="count">' + osServices.length + '</span>' +
+    '<span class="chev' + (osOpen ? ' up' : '') + '">' + ICON.chev + '</span></button>';
+  if (osOpen) {
+    h += '<div class="secnote">따로따로 신청하지 않아도 되는 묶음입니다. 묶음 하나를 신청하면 아래 항목들이 함께 접수됩니다.</div>';
+    osServices.forEach(function (s) {
+      var oid = 'os_' + s.onestop.id;
+      var inc = s.items.filter(function (i) { return i.applies; });
+      h += '<div class="item"><button class="row" data-open="' + esc(oid) + '" style="background:none;border:0">' +
+        '<div class="row-main"><div class="row-title">' + esc(s.onestop.name) + '</div>' +
+        '<div class="row-sub">내게 해당하는 ' + inc.length + '건이 이 묶음으로 신청됩니다</div></div></button>';
+      if (open[oid]) {
+        h += '<div class="detail">' +
+          (s.onestop.summary ? '<div class="lead">' + esc(s.onestop.summary) + '</div>' : '') +
+          inc.map(function (i) { return '<div class="dl"><dd>· ' + esc(i.label) + '</dd></div>'; }).join('') +
+          (s.onestop.applyVia ? '<div class="dl"><dt>신청 방법</dt><dd>' + esc(s.onestop.applyVia) + '</dd></div>' : '') +
+          (s.onestop.caution ? '<div class="warn">' + esc(s.onestop.caution) + '</div>' : '') +
+          (s.onestop.source ? '<div class="srcline">' + esc(s.onestop.source.name) + '</div>' +
+            goLinks([{ url: s.onestop.source.url, label: '안내 원문' }]) : '') +
+          '</div>';
+      }
+      h += '</div>';
+    });
+  }
+  return h + '</div>';
 }
 
 /* ── 제도 변화 행 — '오늘' 탭의 카드에서 쓴다 ──────────────────────────── */
@@ -6192,10 +6442,14 @@ function render() {
   var urgent = CHK.filter(function (c) {
     return !isDone(c.item.id) && isMine(c.item.who) && c.state === 'now';
   }).length;
-  var soonLaw = CHG.filter(function (c) { return c.state === 'soon'; }).length;
+  // 혜택 배지 — 기한이 걸린 미신청 건만 센다(지났거나 30일 안). '지금 신청할 수 있는
+  // 수'를 배지로 달면 늘 켜져 있어 아무것도 알리지 못한다. 오늘 탭에는 배지를 달지
+  // 않는다 — 곧 바뀌는 제도는 오늘 탭 본문의 '곧 바뀌어요' 카드가 말한다(2026-09-10).
+  var applyUrgent = JOURNEY.filter(function (j) {
+    return (j.bucket === 'overdue' || j.bucket === 'softlost' || j.bucket === 'urgent') && !isDone('apply_' + j.id);
+  }).length;
 
-  var body = tab === 'today' ? viewToday() : tab === 'todo' ? viewTodo() : tab === 'life' ? viewLife()
-    : tab === 'journey' ? viewJourney() : viewMoney();
+  var body = tab === 'today' ? viewToday() : tab === 'todo' ? viewTodo() : tab === 'life' ? viewLife() : viewMoney();
 
   // 38차는 '가장 긴 시·군·구 네 글자'를 폭 배분의 기준으로 삼았는데, 그 자리에는
   // 네 글자보다 긴 것도 왔다 — 지역을 아직 고르지 않은 사람의 '지역 미설정'(여섯
@@ -6214,7 +6468,7 @@ function render() {
   var longSido = (profile.sido || '').length >= 7;
   var h = iosInstallBanner() + '<div class="top' + (topPlace.length > 4 ? ' wideplace' : '') +
     (longSido ? ' hidesido' : '') + '">' +
-    '<div class="brand">예부</div>' +
+    '<div class="brand">' + ICON.bean + '예부</div>' +
     '<div class="place"><b>' + esc(topPlace) + '</b><span>' + esc(profile.sido || '') + '</span></div>' +
     '<div class="topbtns">' +
       '<button class="iconbtn" id="searchBtn" aria-label="찾기">' + ICON.search + '</button>' +
@@ -6226,7 +6480,7 @@ function render() {
     '</div></div>' +
     '<div class="scroll" role="main">' + body + '</div>' +
     '<nav class="tabbar">' + TABS.map(function (t) {
-      var n = t.id === 'todo' ? urgent : t.id === 'today' ? soonLaw : 0;
+      var n = t.id === 'todo' ? urgent : t.id === 'money' ? applyUrgent : 0;
       return '<button class="tab' + (tab === t.id ? ' on' : '') + '" data-tab="' + t.id + '"' +
         ' aria-current="' + (tab === t.id ? 'page' : 'false') + '"' +
         ' aria-label="' + t.label + (n ? ', 확인할 항목 ' + n + '건' : '') + '">' +
@@ -6241,7 +6495,7 @@ function render() {
 }
 
 /* ── 이벤트 (위임) ─────────────────────────────────────────────────────── */
-var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health'];
+var ACTION_ATTRS = ['data-tab', 'data-done', 'data-open', 'data-set', 'data-tri', 'data-sheetall', 'data-closesheet', 'data-fold', 'data-invite', 'data-copysteps', 'data-sheet', 'data-ask', 'data-iosclose', 'data-sync', 'data-share', 'data-sharecard', 'data-cardclose', 'data-cardshare', 'data-cardsave', 'data-backup', 'data-freshseen', 'data-install', 'data-health', 'data-chip'];
 var ACTION_IDS = ['themeBtn', 'meBtn', 'sosBtn', 'searchBtn'];
 var ACTIONS = ACTION_ATTRS.map(function (a) { return '[' + a + ']'; })
   .concat(ACTION_IDS.map(function (i) { return '#' + i; })).join(',');
@@ -6283,6 +6537,14 @@ document.addEventListener('click', function (e) {
   if (t.id === 'sosBtn') { sheetOpen = 'sos'; render(); return; }
   if (t.id === 'searchBtn') { sheetOpen = 'search'; render(); focusSearch(); return; }
 
+  if (t.hasAttribute('data-chip')) {
+    // 칩을 바꿔도 자리를 지킨다 — 접기와 같은 이유(전체 재렌더가 스크롤을 0으로 되돌린다).
+    moneyChip = t.getAttribute('data-chip');
+    var scC = document.querySelector('.scroll'); var yC = scC ? scC.scrollTop : 0;
+    render();
+    var scC2 = document.querySelector('.scroll'); if (scC2) scC2.scrollTop = yC;
+    return;
+  }
   if (t.hasAttribute('data-share')) { shareSummary(); return; }
   if (t.hasAttribute('data-sharecard')) { openCard(t.getAttribute('data-sharecard')); return; }
   if (t.hasAttribute('data-cardshare')) { shareCard(); return; }
