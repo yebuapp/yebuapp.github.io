@@ -3260,6 +3260,10 @@ function toggleDone(id) {
   if (done[id]) delete done[id];
   else done[id] = { by: profile.role, at: ENG.fmtDate(TODAY) };
   store('yebu.done', JSON.stringify(done));
+  if (done[id]) {   // 새로 끝낸 것만. 세부 단계(id/step)는 세지 않는다.
+    if (id.indexOf('apply_') === 0) track('apply-marked', { id: id.slice(6) });
+    else if (id.indexOf('/') < 0) track('prep-done', { id: id });
+  }
   pushMark(id, !!done[id]);   // 커플 연결 시 서버에도 반영(미연결이면 안에서 무시)
   schedulePushAlerts();       // 끝낸 일의 기한 알림은 취소된다(2026-09-10 F03)
   render();
@@ -3324,6 +3328,38 @@ function applyInvite(o) {
 var SUPA_URL = 'https://adagxaeirzkujskqjnnm.supabase.co';
 var SUPA_KEY = 'sb_publishable_YO9079BHO-1bLx7iKrdG0A_nwIL0Mxn'; /* 공개용 키 — 브라우저 노출 전제 */
 var SUPA = null;
+
+/* ── 이용 측정(plans/044 계약, 2026-09-14 구현) ───────────────────────────────
+   사람이 아니라 '단계'를 센다. 개인 식별자·정확한 날짜·시·군·구·금액·조건 값은 보내지 않는다 —
+   무엇을 보낼 수 있는지는 서버의 열 제약(0008_events.sql)이 한 번 더 막는다. 삽입 전용 표라
+   아무도(운영자 조회 제외) 읽지 못하고 30일 뒤 지워진다. 추적 거부(DNT)·전역 개인정보 제어(GPC)를
+   켠 브라우저에는 보내지 않는다. 실패는 조용히 무시한다 — 측정이 앱을 막지 않는다. */
+var EV_NAMES = ['arrive', 'conditions', 'first-result', 'apply-open', 'prep-done', 'apply-marked', 'goods-open', 'goods-link'];
+var evSent = {};
+function evAllowed() {
+  try {
+    if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return false;
+  } catch (e) { return false; }
+  return location.protocol !== 'file:' && typeof fetch === 'function';
+}
+function track(name, props, once) {
+  if (EV_NAMES.indexOf(name) < 0 || !evAllowed()) return;
+  if (once && evSent[name]) return;
+  evSent[name] = true;
+  var p = {};
+  Object.keys(props || {}).forEach(function (k) {
+    var v = props[k];
+    if (v == null || v === '') return;
+    p[k] = String(v).slice(0, 48);
+  });
+  try {
+    fetch(SUPA_URL + '/rest/v1/events', {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, Prefer: 'return=minimal' },
+      body: JSON.stringify({ name: name, props: p })
+    }).catch(function () {});
+  } catch (e) {}
+}
 /* partnerLinked — '이 커플에 상대가 실제로 있다'는 확인된 사실(둥지의 두 번째 콩
    근거). coupleId 와 구분한다: create_invite 는 상대가 오기 전에 이미 내
    couple_id 를 채우므로 coupleId 만으로는 상대의 존재를 말할 수 없다(36차). */
@@ -4026,7 +4062,7 @@ function chkRow(c) {
   '</div>' +
   // 신청처가 있는 항목은 링크를 펼치지 않아도 카드 안에 보인다 — 할 일의 첫 행동은 '완료 표시'가
   // 아니라 신청이다(외부감사 E.2). 펼치면 상세 안의 같은 링크가 대신한다.
-  (it.applyUrl && !open[it.id] ? goLinks([{ url: it.applyUrl, label: '신청하러 가기' }]) : '') +
+  (it.applyUrl && !open[it.id] ? goLinks([{ url: it.applyUrl, label: '신청하러 가기', ev: 'apply-open', id: it.id, layer: 'checkpoint' }]) : '') +
   '</div>';
 
   // 대상 조건을 판단할 값이 비어 있으면 그 자리에서 묻는다(제도 카드와 같은 질문 상자).
@@ -4039,7 +4075,7 @@ function chkRow(c) {
   if (open[it.id]) {
     h += '<div class="detail">' + chkDetailBody(it) +
       goLinks([
-        { url: it.applyUrl, label: '신청하러 가기' },
+        { url: it.applyUrl, label: '신청하러 가기', ev: 'apply-open', id: it.id, layer: 'checkpoint' },
         { url: it.source && it.source.url, label: it.applyUrl ? '안내 원문' : '원문 보기' }
       ]) +
       // 입원 가방 항목에서 준비물 서랍으로 — 목록(무엇을 몇 개)은 알아보기 탭의 준비물 서랍이 맡는다.
@@ -4643,7 +4679,7 @@ function goodsLinksHtml(x) {
   if (!(x.links || []).length) return '';
   return '<div class="goods-ad">' + esc(GOODS_AD) + '</div>' +
     goLinks(x.links.map(function (l, i) {
-      return { url: l.url, label: '쿠팡에서 보기' + (l.label ? ' — ' + l.label : (x.links.length > 1 ? ' ' + (i + 1) : '')) };
+      return { url: l.url, label: '쿠팡에서 보기' + (l.label ? ' — ' + l.label : (x.links.length > 1 ? ' ' + (i + 1) : '')), ev: 'goods-link', id: x.id };
     })) +
     '<div class="srcline">' + esc(GOODS_NOTICE) + (x.recallCheckedAt ? ' · 리콜 확인 ' + esc(x.recallCheckedAt) : '') + '</div>';
 }
@@ -4967,7 +5003,7 @@ function journeyBucketsHtml(buckets, byId, forceOpen) {
         (j.confirmedAmount != null ? '<div class="row-money">' + esc(ENG.won(j.confirmedAmount)) + '</div>' : '') +
         '</div></div>' +
         // '아직 신청할 수 없습니다' 항목에 '신청하러 가기'는 자기모순 — 안내로 부른다.
-        goLinks([{ url: j.applyUrl, label: b.key === 'notyet' ? '안내 미리 보기' : '신청하러 가기' }]) +
+        goLinks([{ url: j.applyUrl, label: b.key === 'notyet' ? '안내 미리 보기' : '신청하러 가기', ev: 'apply-open', id: j.id, layer: j.layer }]) +
         // 기준일을 묻는 행 — 제도 카드·할 일 탭과 같은 질문 상자를 그 자리에 붙인다.
         (b.key === 'askDate' && j.missingFields && j.missingFields.length ? askBlock(j) : '') +
         (r && open[pid] ? programDetailHtml(r) : '') + '</div>';
@@ -4993,6 +5029,7 @@ function goLinks(opts) {
   (opts || []).forEach(function (o) {
     if (!o || !o.url) return;
     out += '<a class="golink' + (o.strong ? ' strong' : '') + '" href="' + esc(o.url) + '"' +
+      (o.ev ? ' data-ev="' + esc(o.ev) + '"' + (o.id ? ' data-ev-id="' + esc(o.id) + '"' : '') + (o.layer ? ' data-ev-layer="' + esc(o.layer) + '"' : '') : '') +
       ' target="_blank" rel="noopener noreferrer">' + esc(o.label) + ICON.ext + '</a>';
   });
   return out ? '<div class="golinks">' + out + '</div>' : '';
@@ -5277,7 +5314,7 @@ function moneyRow(r, showAmount) {
         ? '<div class="row-when-unit">' + (r.deadline.estimated ? '출산 후' : dday(r.deadline.daysLeft)) + '</div>' : '') +
     '</div></div>' +
     goLinks([
-      { url: r.program.applyUrl || r.program.onlineApplyUrl, label: '신청하러 가기' },
+      { url: r.program.applyUrl || r.program.onlineApplyUrl, label: '신청하러 가기', ev: 'apply-open', id: r.program.id, layer: r.program.layer },
       { url: r.program.source && r.program.source.url, label: '제도 안내 원문' }
     ]) + '</div>';
   if (open[pid]) h += programDetailHtml(r);
@@ -5927,6 +5964,7 @@ function unlockNoteHtml(st) {
 
 function moneyHeroHtml() {
   var st = currentMoneyState();
+  track('first-result', { code: st.code }, true);   // 합계 판정 이름만 — 금액은 싣지 않는다
   var head, body, note = '';
   if (st.code === 'HAS_AMOUNT') {
     head = '확인된 제도만 더한 금액';
@@ -6843,7 +6881,7 @@ function searchDetail(e) {
         '</dd></div>';
     }
     h += chkDetailBody(r);
-    if (r.applyUrl) h += goLinks([{ url: r.applyUrl, label: '신청하러 가기' }]);
+    if (r.applyUrl) h += goLinks([{ url: r.applyUrl, label: '신청하러 가기', ev: 'apply-open', id: r.id, layer: r.layer }]);
 
   } else if (e.kind === '혜택') {
     if (r.summary) h += '<div class="lead">' + esc(r.summary) + '</div>';
@@ -6865,7 +6903,7 @@ function searchDetail(e) {
     h += dlRow('법적 근거', r.legalBasis);
     if (r.evidence && r.evidence.quote) h += quoteList([{ text: r.evidence.quote, source: r.source && r.source.name, url: r.evidence.url }]);
     h += goLinks([
-      { url: r.applyUrl || r.onlineApplyUrl, label: '신청하러 가기' },
+      { url: r.applyUrl || r.onlineApplyUrl, label: '신청하러 가기', ev: 'apply-open', id: r.id, layer: r.layer },
       { url: r.source && r.source.url, label: '제도 안내 원문' }
     ]);
     // 혜택 탭 상세와 같은 제보 링크 — 검색으로 들어와도 오류를 알릴 길은 같다.
@@ -6997,6 +7035,13 @@ function iosInstallBanner() {
 /* ── 렌더 ──────────────────────────────────────────────────────────────── */
 function render() {
   recompute();
+  // arrive — 앱이 처음 그려질 때 한 번. 어디서 왔는지의 '종류'와 지역 힌트의 '유무'만.
+  if (!evSent.arrive) {
+    track('arrive', {
+      entry: document.referrer.indexOf('/pages/') >= 0 ? 'pages' : /access_token=/.test(location.hash) ? 'kakao-callback' : 'direct',
+      hint: URL_REGION ? 'y' : 'n'
+    }, true);
+  }
   askSeq = 0;
   var themeIcon = theme === 'light' ? ICON.sun : theme === 'dark' ? ICON.moon : ICON.auto;
   var themeLabel = theme === 'light' ? '밝게' : theme === 'dark' ? '어둡게' : '기기 설정에 맞춤';
@@ -7119,6 +7164,12 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
+// 바깥으로 나가는 링크의 클릭만 센다 — 새 탭으로 열리므로 keepalive 로 보낸다.
+document.addEventListener('click', function (e) {
+  var a = e.target.closest ? e.target.closest('a[data-ev]') : null;
+  if (!a) return;
+  track(a.getAttribute('data-ev'), { id: a.getAttribute('data-ev-id'), layer: a.getAttribute('data-ev-layer') });
+});
 document.addEventListener('click', function (e) {
   // 조작 가능한 것을 한 곳에서 센다 — 여기에 이름을 빠뜨려서 버튼이 죽는 일이
   // 두 번 있었다. 새 data-* 를 만들면 이 배열에만 넣으면 된다.
@@ -7157,6 +7208,8 @@ document.addEventListener('click', function (e) {
     // 걸러서, 나중에 추가한 '이대로 시작하기' 버튼이 아무 일도 하지 않았다 —
     // 첫 실행의 주 버튼이 조용히 죽어 있었다. 이제 배경만 시트 밖을 확인한다.
     if (t.getAttribute('data-closesheet') === 'backdrop' && e.target.closest('.sheet')) return;
+    // conditions — 첫 실행 카드를 끝냄. 단계·역할·시·도(광역)까지만.
+    if (t.getAttribute('data-closesheet') === 'done') track('conditions', { stage: profile.stage, role: profile.role, sido: profile.sido }, true);
     saveProfile();
     sheetOpen = false; render(); return;
   }
@@ -7320,6 +7373,10 @@ document.addEventListener('click', function (e) {
   if (t.hasAttribute('data-done')) { toggleDone(t.getAttribute('data-done')); return; }
   if (t.hasAttribute('data-open')) {
     var k = t.getAttribute('data-open'); open[k] = !open[k];
+    if (open[k]) {   // goods-open — 서랍(g_)과 검색 결과(s_g_) 둘 다
+      if (k.indexOf('g_') === 0) track('goods-open', { id: k.slice(2) });
+      else if (k.indexOf('s_g_') === 0) track('goods-open', { id: k.slice(4) });
+    }
     if (sheetOpen === 'search') {
       var sb = document.querySelector('.sheet-body'); var sy = sb ? sb.scrollTop : 0;
       render();
