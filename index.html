@@ -441,6 +441,9 @@ b, strong { font-weight: 600; }
   font-size: var(--fs-label); font-weight: 600; color: var(--accent); line-height: 1.4; }
 .row-plan svg { width: 13px; height: 13px; flex-shrink: 0; fill: none;
   stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* '이번 주 세 가지' — 체크 원이 없는 정보 행(검사·접종)의 제목을 체크 행의 제목과 같은 자리에 세운다.
+   체크 원은 왼쪽으로 11px 물러난 44px 상자라 본문이 45px 에서 시작한다(2026-09-17 실화면: 가운데 행만 왼쪽에 붙어 있었다). */
+.week3 .row:not(:has(.chk)) { padding-left: 45px; }
 .row.done .row-title { text-decoration: line-through; color: var(--mut); font-weight: 400; }
 .row.done .row-sub, .row.done .row-side { opacity: 0.45; }
 
@@ -4355,7 +4358,7 @@ function viewToday() {
   else if (moNow[0]) picks.push(moRow(moNow[0]));
   if (weekChk[1]) picks.push(todayChkCard(weekChk[1]));
   var openN = myOpenCount().left;
-  h += '<div class="sec"><div class="sec-head" style="cursor:default"><h3>이번 주 세 가지</h3>' +
+  h += '<div class="sec week3"><div class="sec-head" style="cursor:default"><h3>이번 주 세 가지</h3>' +
     '<button class="count" data-tab="todo" style="min-height:44px">준비 탭에 ' + openN + '건</button></div>' +
     (picks.length ? picks.join('')
       : '<div class="secnote">이번 주에 급한 일은 없습니다. 전체 목록은 준비 탭에 있습니다.</div>') +
@@ -5295,6 +5298,8 @@ function askWhereHtml(r) {
      하면 없는 돈을 찾아 헤매게 만든다 — 영유아 건강검진에 그렇게 붙어 있었다. */
   var reason = (r.amount && r.amount.reason) || '';
   if (/현물|무료|서비스\s*제공|환산할\s*수\s*없|바우처로\s*제공|자동\s*적용/.test(reason)) amountUnknown = false;
+  // 이유 문장이 이미 어디에 물어야 하는지 말하면(2026-09-17 문구 정리 뒤 대부분 그렇다) 같은 말을 상자로 되풀이하지 않는다.
+  if (/(확인|문의)(해 주세요|하세요|해 보세요)/.test(reason)) amountUnknown = false;
   if (!amountUnknown && !deadlineUnknown) return '';
 
   var what = amountUnknown && deadlineUnknown ? '정확한 금액과 신청 기한은'
