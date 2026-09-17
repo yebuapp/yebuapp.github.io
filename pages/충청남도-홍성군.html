@@ -5,6 +5,9 @@
 <link rel="canonical" href="https://yebuapp.github.io/pages/%EC%B6%A9%EC%B2%AD%EB%82%A8%EB%8F%84-%ED%99%8D%EC%84%B1%EA%B5%B0.html">
 <link rel="icon" href="../icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="예부">
 <meta property="og:locale" content="ko_KR">
@@ -12,33 +15,44 @@
 <meta property="og:description" content="홍성군에서 확인된 출산·임신 지원 1건을 금액·신청 기한·근거 원문과 함께 정리했습니다. 국가 지원금까지 합친 내 금액은 예부에서 계산할 수 있습니다.">
 <meta property="og:url" content="https://yebuapp.github.io/pages/%EC%B6%A9%EC%B2%AD%EB%82%A8%EB%8F%84-%ED%99%8D%EC%84%B1%EA%B5%B0.html">
 <style>
-:root{color-scheme:light;--bg:#FBFAF9;--ink:#141313;--muted:#6B6863;--line:#DDDAD6;--accent:#3538CD;--accent-soft:#EFEFFB;--gold:#8C6420}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
-main{max-width:720px;margin:0 auto;padding:32px 18px 72px}
-h1{font-size:1.5rem;line-height:1.4}h2{font-size:1.05rem;margin:0 0 4px}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0}
-.chip{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 8px 2px;border-radius:3px;background:var(--accent-soft);color:var(--accent)}
-
+:root{color-scheme:light;--bg:#F7F3EC;--surface:#FFFFFF;--sunken:#F2EDE4;--ink:#221F2B;--sub:#55505F;--muted:#6E687B;--line:#E7E1D6;--line-2:#CFC8BA;--accent:#4A45C9;--accent-soft:#EEEDFB;--peach:#FDF3E0;--on-peach:#6E4700;--gold:#6E4700}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:0 auto;padding:28px 16px 72px}
+h1{font-size:26px;line-height:1.35;font-weight:700;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+h1 small{font-size:16px;font-weight:500;color:var(--muted)}
+h2{font-size:18px;line-height:1.4;font-weight:600;margin:0 0 6px}
+p{margin:0 0 10px}
+.card{background:var(--surface);border:0;border-radius:18px;padding:18px 18px 16px;margin:14px 0;box-shadow:0 2px 10px rgba(34,31,43,.06)}
+.card h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:7px;background:var(--accent-soft);color:var(--accent)}
 .tblwrap{overflow-x:auto;margin:8px 0;-webkit-overflow-scrolling:touch}
-table{border-collapse:collapse;font-size:.9rem;white-space:nowrap}td,th{border:1px solid var(--line);padding:4px 12px;text-align:left}
-.amt{color:var(--gold);font-weight:700}
-.meta{font-size:.8rem;color:var(--muted);margin-top:8px}
-.src{font-size:.82rem;color:var(--muted)}a{color:var(--accent)}
-.pgfoot{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
-.note{background:#fff;border-left:3px solid var(--accent);padding:10px 14px;font-size:.86rem;margin:16px 0}
+table{border-collapse:collapse;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+td,th{border:1px solid var(--line);padding:6px 12px;text-align:left}
+th{font-weight:500;color:var(--sub);background:var(--sunken)}
+.amt{color:var(--gold);font-weight:700;font-family:'IBM Plex Sans','Noto Sans KR',sans-serif}
+.meta{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6}
+.src{font-size:13px;color:var(--muted);line-height:1.6}
+a{color:var(--accent)}
+blockquote{margin:12px 0;padding:2px 0 2px 14px;border-left:3px solid var(--accent);color:var(--sub);font-size:15px;line-height:1.7}
+.pgfoot{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.note{background:var(--sunken);border-radius:12px;padding:12px 14px;font-size:15px;line-height:1.6;margin:14px 0}
+/* 광고 표시문구 — 본문과 다른 바탕색으로 첫 줄에(공정위 지침: 배경과 구분되게, 더보기 없이) */
+.note.ad{background:var(--peach);color:var(--on-peach);font-size:13.5px;font-weight:600}
 ul{padding-left:1.2em}
-/* 지역 목록은 모바일에서 주 내비게이션이다 — 터치 타깃 44px 확보(Apple HIG). */
-ul.regions{list-style:none;padding:0;margin:16px 0;display:grid;gap:8px}
-ul.regions li{margin:0}
-ul.regions a{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;
-  padding:10px 16px;background:#fff;border:1px solid var(--line);border-radius:10px;text-decoration:none}
-ul.regions a .cnt{font-size:.8rem;color:var(--muted);white-space:nowrap}
-@media (min-width:560px){ ul.regions{grid-template-columns:1fr 1fr} }
+li{margin:4px 0}
+/* 지역·준비물 목록은 모바일에서 주 내비게이션이다 — 터치 타깃 44px 확보(Apple HIG). */
+ul.regions,ul.idx{list-style:none;padding:0;margin:16px 0;display:grid;gap:8px}
+ul.regions li,ul.idx li{margin:0}
+ul.regions a,ul.idx a{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;
+  padding:10px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--ink);font-weight:500}
+ul.regions a .cnt,ul.idx a .cnt{font-size:13px;color:var(--muted);white-space:nowrap;font-weight:400}
+@media (min-width:560px){ ul.regions,ul.idx{grid-template-columns:1fr 1fr} }
 /* 앱으로 가는 버튼 — 이 페이지가 존재하는 이유다. 터치 타깃 48px. */
 .cta{display:flex;align-items:center;justify-content:center;min-height:52px;margin:18px 0;padding:12px 18px;
-  background:var(--accent);color:#fff;border-radius:11px;font-weight:700;text-decoration:none;text-align:center}
+  background:var(--accent);color:#fff;border-radius:14px;font-weight:600;text-decoration:none;text-align:center}
 .cta:visited{color:#fff}
-.applead{font-size:.9rem;color:var(--muted);margin:6px 0 0;text-align:center}
+.applead{font-size:15px;color:var(--muted);margin:6px 0 0;text-align:center}
 </style>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "187d699caf674a249f340daa99809a07"}'></script></head><body><main>
     <h1>홍성군 출산지원금·임신 혜택 <small>(2026)</small></h1>
