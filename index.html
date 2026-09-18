@@ -4726,7 +4726,8 @@ function goodsToggle(id) {
 function goodsLinksHtml(x) {
   if (!(x.links || []).length) return '';
   return goLinks(x.links.map(function (l, i) {
-      return { url: l.url, label: '쿠팡에서 보기' + (l.label ? ' · ' + l.label : (x.links.length > 1 ? ' ' + (i + 1) : '')), ev: 'goods-link', id: x.id };
+      // 링크는 쿠팡 파트너스 '검색 결과' 링크다(운영자 확인 2026-09-18) — 특정 상품을 고른 것처럼 읽히지 않게 '검색으로 이동'이라 쓴다.
+      return { url: l.url, label: '쿠팡 검색으로 이동' + (l.label ? ' · ' + l.label : (x.links.length > 1 ? ' ' + (i + 1) : '')), ev: 'goods-link', id: x.id };
     })) +
     '<div class="srcline">' + esc(GOODS_NOTICE) + '</div>';
 }
