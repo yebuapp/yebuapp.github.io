@@ -1,6 +1,6 @@
 /* 예부 서비스워커 — 네트워크 우선, 실패 시 캐시(오프라인 폴백).
-   캐시 키는 빌드마다 바뀌어(e610b729cd) 구버전이 눌러앉지 않는다. */
-var CACHE = 'yebu-e610b729cd';
+   캐시 키는 빌드마다 바뀌어(856f74dc7d) 구버전이 눌러앉지 않는다. */
+var CACHE = 'yebu-856f74dc7d';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', function (e) {
