@@ -56,7 +56,7 @@ ol.nc em { flex: none; font-family: var(--serif); font-style: normal; font-weigh
 .tl { margin: 4px 0 16px; } .tl-r { display: flex; gap: 14px; } .tl-d { flex: none; width: 14px; display: flex; flex-direction: column; align-items: center; } .tl-d i { width: 12px; height: 12px; border-radius: 50%; background: var(--warm); margin-top: .5em; } .tl-d::after { content: ''; flex: 1; width: 2px; background: var(--line); } .tl-r:last-child .tl-d::after { display: none; }
 .tl-b { flex: 1; padding-bottom: 18px; } .tl-w { font-size: .82em; font-weight: 700; color: var(--warm); } .tl-t { font-weight: 700; line-height: 1.5; } .tl-n { font-size: .88em; line-height: 1.6; color: var(--sub); } .tl-n span { font-weight: 700; color: var(--mut); }
 .sig { border-radius: 22px; padding: 16px 18px 6px; margin: 0 -8px 14px; background: var(--card); border: 1px solid var(--line); } .sig-h { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.06em; padding-bottom: 8px; }
-.sig-i { padding: 11px 0; border-top: 1px solid var(--line); line-height: 1.6; } .sig-w { font-size: .8em; font-weight: 700; color: var(--mut); margin-top: 4px; } .sig-n { font-size: .88em; color: var(--sub); margin-top: 3px; }
+.sig-i { padding: 11px 0; border-top: 1px solid var(--line); line-height: 1.6; } .sig-w { font-size: .8em; font-weight: 700; color: var(--mut); margin-top: 4px; } .sig-n { font-size: .88em; color: var(--sub); margin-top: 3px; } .sig.bare { padding-top: 6px; } .sig.bare .sig-i:first-child { border-top: 0; } .sig.bare .sig-w { font-size: .86em; }
 .sig.hot { background: var(--hot); border-color: transparent; color: #fff; } .sig.hot .sig-i { border-top-color: rgba(255,255,255,.25); } .sig.hot .sig-w { color: #FFD9CB; } .sig.hot .sig-n { color: #FFE7DE; }
 .sig.warm { background: var(--hotbg); border-color: transparent; color: var(--hotink); } .sig.warm .sig-i { border-top-color: rgba(142,47,20,.25); } .sig.warm .sig-w { color: var(--hotink); }
 .tbl { margin: 0 0 16px; overflow-x: auto; } table { border-collapse: collapse; width: 100%; font-size: .92em; } th, td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: left; vertical-align: top; } th { color: var(--mut); font-size: .88em; white-space: nowrap; }
@@ -69,8 +69,10 @@ ol.nc em { flex: none; font-family: var(--serif); font-style: normal; font-weigh
 .sheet .dots { flex: 1; display: flex; align-items: center; justify-content: space-between; position: relative; height: 24px; } .sheet .dots::before { content: ''; position: absolute; left: 6px; right: 6px; top: 11px; height: 2px; background: var(--line); } .sheet .dots i { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--mut); } .sheet .dots i.on { width: 22px; height: 22px; background: var(--accent); box-shadow: 0 0 0 5px var(--tint); }
 .sheet .th { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .sheet .th button { height: 56px; border-radius: 16px; border: 1px solid var(--line); font-size: 14px; font-weight: 500; } .sheet .th button.on { border: 2px solid var(--accent); font-weight: 700; }
 .wm { display: none; }
+.wmk { position: fixed; inset: 0; z-index: 4; pointer-events: none; background-repeat: repeat; }
+body[data-mark] main { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 html.js .view { display: none; } html.js .view.on { display: block; } html.js body.is-home .bar, html.js body.is-home .prog, html.js body.is-home .pager { display: none; }
-@media print { html.js .view { display: block; } .bar, .prog, .sheet, .pager, .jump, .resume { display: none !important; } body { background: #fff; color: #000; font-size: 11pt; } main { max-width: none; padding: 0; } .chap { break-before: page; } .notes { display: block; } .sig, ol.nc li, .tl-r { break-inside: avoid; }
+@media print { html.js .view { display: block; } .bar, .prog, .sheet, .pager, .jump, .resume { display: none !important; } .wmk { position: fixed; } body { background: #fff; color: #000; font-size: 11pt; } main { max-width: none; padding: 0; } .chap { break-before: page; } .notes { display: block; } .sig, ol.nc li, .tl-r { break-inside: avoid; }
   .wm { display: block; position: fixed; left: 0; right: 0; bottom: 4mm; text-align: center; font-size: 8pt; color: #999; } .wm.big { top: 45%; bottom: auto; font-size: 30pt; color: rgba(0,0,0,.06); transform: rotate(-24deg); } }
 </style>
 </head>
@@ -259,7 +261,7 @@ html.js .view { display: none; } html.js .view.on { display: block; } html.js bo
 <p>Rh 면역글로불린은 그 항체가 생기지 않도록 미리 막아 주는 주사입니다.</p>
 <p>혈액형 검사에서 Rh 음성으로 확인되면 이미 항-D 항체가 만들어졌는지를 살핍니다. 항체가 아직 없는 Rh 음성 산모가 주사 대상입니다. 아기에게 이미 심한 용혈성 질환이 생겼다면 탯줄로 아기에게 직접 피를 넣는 태아 수혈이 필요할 수 있습니다.</p>
 <p>주사는 임신 중 한 번, 분만 후 한 번 맞습니다. 임신 중에 맞는 시기는 안내마다 다릅니다.</p>
-<div class="tl"><div class="tl-r"><div class="tl-d"><i></i></div><div class="tl-b"><div class="tl-w">임신 중</div><div class="tl-t">'임신 28주에 한 번'이라는 안내가 있고, '임신 26~32주'라는 안내가 있습니다</div></div></div><div class="tl-r"><div class="tl-d"><i></i></div><div class="tl-b"><div class="tl-w">분만 후</div><div class="tl-t">72시간 이내에 맞는다고 안내됩니다</div></div></div></div>
+<div class="sig warm bare"><div class="sig-i"><div>임신 중</div><div class="sig-w">'임신 28주에 한 번'이라는 안내가 있고, '임신 26~32주'라는 안내가 있습니다</div></div><div class="sig-i"><div>분만 후</div><div class="sig-w">72시간 이내에 맞는다고 안내됩니다</div></div></div>
 <p>국내 표준 권고가 둘 중 무엇인지는 확인하지 못했습니다.</p>
 <p>혈액형과 항체 여부는 채혈로 보고, 면역글로불린은 주사로 맞습니다. 공식 자료에서 확인되지 않은 것은 다음과 같습니다.</p>
 <ol class="nc"><li><em>1</em><div><b>추가로 맞아야 하는 상황</b><p>유산, 자궁외임신, 양수검사, 융모막융모생검 같은 상황에서 추가로 맞아야 하는지는 확인되지 않았습니다.</p></div></li><li><em>2</em><div><b>주사의 세부 사항</b><p>주사 부위와 소요 시간, 통증과 부작용, 비용과 건강보험 적용 여부도 같습니다.</p></div></li><li><em>3</em><div><b>항체가 이미 있는 산모</b><p>이미 항-D 항체가 만들어진 산모의 경과 관찰 방법도 확인되지 않았습니다.</p></div></li></ol>
@@ -511,7 +513,7 @@ html.js .view { display: none; } html.js .view.on { display: block; } html.js bo
   var SIZES = [15, 16, 18, 20, 23], si = +(get('yebu.book.fs') || 1); if (!(si >= 0 && si < 5)) si = 1;
   var chaps = [].slice.call(d.querySelectorAll('.chap')), home = d.querySelector('.home'), bar = d.querySelector('.bar .t'), prog = d.querySelector('.prog i'), sheet = d.querySelector('.sheet');
   function size() { h.style.setProperty('--fs', SIZES[si] + 'px'); set('yebu.book.fs', si); [].forEach.call(d.querySelectorAll('.dots i'), function (x, k) { x.className = k === si ? 'on' : ''; }); }
-  function theme(t) { h.setAttribute('data-theme', t); set('yebu.book.theme', t); [].forEach.call(d.querySelectorAll('[data-theme-btn]'), function (b) { b.className = b.getAttribute('data-theme-btn') === t ? 'on' : ''; }); }
+  function theme(t) { h.setAttribute('data-theme', t); set('yebu.book.theme', t); if (typeof wmk === 'function') wmk(); [].forEach.call(d.querySelectorAll('[data-theme-btn]'), function (b) { b.className = b.getAttribute('data-theme-btn') === t ? 'on' : ''; }); }
   function resume() { var id = get('yebu.book.ch'), c = id && d.getElementById(id), a = d.querySelector('.resume'); if (!a) return;
     if (c) { a.href = '#' + id; a.querySelector('small').textContent = '이어 읽기'; a.querySelector('b').textContent = c.getAttribute('data-label') + ' · ' + c.getAttribute('data-title'); } }
   function show(el, keep) {
@@ -537,7 +539,13 @@ html.js .view { display: none; } html.js .view.on { display: block; } html.js bo
   });
   window.addEventListener('hashchange', route);
   window.addEventListener('scroll', function () { var m = d.body.scrollHeight - window.innerHeight; prog.style.width = (m > 0 ? Math.min(100, window.scrollY / m * 100) : 0) + '%'; }, { passive: true });
-  size(); theme(get('yebu.book.theme') || 'paper'); route();
+  var mark = d.body.getAttribute('data-mark');
+  function wmk() { if (!mark) return; var el = d.querySelector('.wmk'); if (!el) { el = d.createElement('div'); el.className = 'wmk'; el.setAttribute('aria-hidden', 'true'); d.body.appendChild(el); }
+    var dark = h.getAttribute('data-theme') === 'dark', t = mark.replace(/[<>&"']/g, '');
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="190"><text x="12" y="120" transform="rotate(-24 150 95)" font-family="sans-serif" font-size="13" fill="' + (dark ? '#fff' : '#000') + '" fill-opacity="' + (dark ? '.07' : '.06') + '">' + t + '</text></svg>';
+    el.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")'; }
+  if (mark) { ['copy', 'cut', 'contextmenu', 'dragstart'].forEach(function (ev) { d.addEventListener(ev, function (e) { e.preventDefault(); }); }); }
+  size(); theme(get('yebu.book.theme') || 'paper'); wmk(); route();
 })();
 </script>
 </body>
