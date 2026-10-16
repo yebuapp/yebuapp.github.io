@@ -1685,11 +1685,11 @@ function hasCalendarYear(req) {
 }
 
 /** 판단 불가로 남은 요구사항 안의 창구 확인 문구들 — 화면이 사유를 지어내지 않도록 원문 쪽 문구를 그대로 넘긴다. */
-function officeChecksOf(req, p) {
+function officeChecksOf(req, p, inAny = false) {
   if (checkRequirement(req, p) !== 'unknown') return [];
-  if (req.anyOf) return req.anyOf.flatMap((r) => officeChecksOf(r, p));
-  if (req.allOf) return req.allOf.flatMap((r) => officeChecksOf(r, p));
-  return typeof req.officeCheck === 'string' ? [req.officeCheck] : [];
+  if (req.anyOf) return req.anyOf.flatMap((r) => officeChecksOf(r, p, true));
+  if (req.allOf) return req.allOf.flatMap((r) => officeChecksOf(r, p, inAny));
+  return typeof req.officeCheck === 'string' ? [{ text: req.officeCheck, inAny }] : [];
 }
 
 function checkRegion(program, p) {
@@ -1973,6 +1973,8 @@ function evaluate(profile, programs, today = new Date()) {
     let failedFields = [];
     let unknownReason = null;
     let officeChecks = [];
+    let officeCheckAny = false;
+    let missingAnyReq = null;   // 판단 불가인 최상위 요구사항 중 anyOf 가 정확히 하나일 때 그 요구사항
     if (superseded) status = 'ineligible';
     else if (region === 'fail') status = 'ineligible';
     else if (stage === 'past') status = 'past';
@@ -2002,7 +2004,11 @@ function evaluate(profile, programs, today = new Date()) {
           else if (p.sigungu == null) missingFields.push('sigungu');
         }
         // 창구 확인 문구는 물을 것이 남아 있어도 함께 넘긴다 — 답해도 창구 확인이 남는다는 걸 미리 알린다.
-        officeChecks = [...new Set(reqs.flatMap((r) => officeChecksOf(r, p)))];
+        const oc = reqs.flatMap((r) => officeChecksOf(r, p));
+        officeChecks = [...new Set(oc.map((o) => o.text))];
+        officeCheckAny = oc.some((o) => o.inAny);
+        const unkAny = reqs.filter((r, i) => checks[i] === 'unknown' && r.anyOf);
+        if (unkAny.length === 1) missingAnyReq = unkAny[0];
         // 물어볼 것이 하나도 없는 보류는 사용자가 아니라 우리가 모르는 것이다.
         // 무엇을 모르는지는 제도마다 다르므로, 화면이 이유를 지어내지 않도록
         // 엔진이 사유를 짚어 준다. ('지역 시행 여부를 확인 못 했습니다'를
@@ -2051,7 +2057,7 @@ function evaluate(profile, programs, today = new Date()) {
     // 지역을 모르면(region 'unknown') 내 지역 제도인지조차 모른다 — 남의 지역 마감을 '기한 지남'으로 쌓지 않는다(plan 060).
     if ((status === 'eligible' || (status === 'unknown' && region === 'pass')) && blocked) {
       status = 'expired';
-      missingFields = []; unknownReason = null; officeChecks = [];
+      missingFields = []; unknownReason = null; officeChecks = []; officeCheckAny = false; missingAnyReq = null;
     }
 
     const rule = program.amountRule ? AMOUNT_RULES[program.amountRule] : null;
@@ -2078,6 +2084,14 @@ function evaluate(profile, programs, today = new Date()) {
       missingFields = [...new Set([...missingFields, ...deadline.missingFields])];
     }
 
+    // 질문이 여럿 뜨지만 전부 답할 필요는 없는 경우 — 최종 missingFields 전부가
+    // 판단 불가인 anyOf 요구사항 하나에서 나왔고 2개 이상일 때만 true (plan 061).
+    let missingAny = false;
+    if (missingAnyReq && missingFields.length >= 2) {
+      const own = new Set(missingOf(missingAnyReq, p));
+      missingAny = own.size === missingFields.length && missingFields.every((f) => own.has(f));
+    }
+
     return {
       program,
       status,
@@ -2087,6 +2101,10 @@ function evaluate(profile, programs, today = new Date()) {
       unknownReason,
       // unknownReason 이 'officeCheck' 일 때 창구에서 확인할 것(데이터 원문 쪽 문구)
       officeChecks,
+      // officeChecks 중 하나라도 '또는' 갈래에서 왔는가 — 맞으면 "해당해야"로 단정하면 안 된다
+      officeCheckAny,
+      // 물을 칸이 여럿이지만 그중 하나만 해당해도 되는가(anyOf 하나에서 전부 나옴)
+      missingAny,
       // 지역이 달라 해당되지 않는 경우 — 대체(superseded)와 구분해 이유를 밝힌다.
       regionFail: region === 'fail' && !superseded,
       notYetEffective,
@@ -5442,7 +5460,9 @@ var FIELD_ASK = {
     note: '입양축하금처럼 입양 가정만 받는 제도를 판정할 때만 씁니다.' },
   // 난임 시술비·약제비·한방 치료는 난임 부부만 받는다 — 묻지 않으면 준비 중인 모든 사용자에게 '해당'으로 떴다(2026-10-15).
   // 질문은 모자보건법 제2조제11호의 정의를 그대로 옮긴다 — 진단서 유무로만 물으면 아직 진단 전인 난임 부부가 빠진다.
-  isInfertile:         { q: '난임 진단을 받았거나, 피임 없이 1년이 지나도 임신이 되지 않고 있나요?', opts: ASK_YESNO,
+  isInfertile:         { q: '두 분 중 한 분이라도 난임 진단을 받았거나, 피임 없이 1년이 지나도 임신이 되지 않고 있나요?',
+    qByStage: { pregnant: '이번 임신 전에 두 분 중 한 분이라도 난임 진단을 받았거나 난임 시술(인공수정·체외수정)을 받으셨나요?' },
+    opts: ASK_YESNO,
     note: '난임 시술비·약제비·한방 치료처럼 난임 부부만 받는 제도를 판정할 때만 씁니다. 대부분 신청할 때 병원의 난임진단서가 필요합니다.' },
   // 데이터의 대상 정의를 그대로 옮긴다 — '고위험 임신입니다' 는 자가 판단을
   // 부르지만, 제도가 요구하는 것은 진단·입원 사실이다.
@@ -5500,6 +5520,7 @@ var SHEET_FIELD_LABEL = {
 };
 
 var askSeq = 0;   /* 렌더마다 0 부터 — 같은 순서면 같은 id 라 입력 뒤 초점을 되돌릴 수 있다 */
+function askQ(a) { return (a.qByStage && a.qByStage[profile.stage]) || a.q; }
 function askBlock(r, bare) {
   var fields = r.missingFields || [];
   if (!fields.length) return '';
@@ -5512,7 +5533,7 @@ function askBlock(r, bare) {
     var qid = 'q_' + f + '_' + (askSeq++);
     if (a.type) {
       // 날짜·월 질문. 값이 그대로 사실이므로 변환하지 않는다.
-      h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(a.q) + '</div>' +
+      h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(askQ(a)) + '</div>' +
         '<input class="ask-num" type="' + a.type + '" id="' + qid + '_in" aria-labelledby="' + qid + '" data-asktext="' + esc(f) + '"' +
         ' value="' + esc(profile[f] == null ? '' : profile[f]) + '"' +
         (a.max ? ' max="' + esc(a.max) + '"' : '') + '>' +
@@ -5523,7 +5544,7 @@ function askBlock(r, bare) {
       // 배율은 질문이 정한다 — 소득은 만원 단위로 받고, 생일(일)은 그대로다.
       var sc = a.scale || 1;
       var cur = profile[f] != null ? Math.round(profile[f] / sc) : '';
-      h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(a.q) + '</div>' +
+      h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(askQ(a)) + '</div>' +
         '<input class="ask-num" type="number" inputmode="numeric" id="' + qid + '_in" aria-labelledby="' + qid + '" data-asknum="' + esc(f) + '"' +
         ' data-askscale="' + sc + '"' +
         (a.min != null ? ' min="' + esc(a.min) + '"' : '') +
@@ -5532,7 +5553,7 @@ function askBlock(r, bare) {
         (a.note ? '<div class="fieldnote">' + a.note + '</div>' : '') + '</div>';
       return;
     }
-    h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(a.q) + '</div><div class="ask-opts" role="group" aria-labelledby="' + qid + '">' +
+    h += '<div class="ask"><div class="ask-q" id="' + qid + '">' + esc(askQ(a)) + '</div><div class="ask-opts" role="group" aria-labelledby="' + qid + '">' +
       a.opts.map(function (o) {
         var on = JSON.stringify(profile[f]) === o[1];
         return '<button class="askbtn' + (on ? ' on' : '') + '" data-ask="' + esc(f) + '"' +
@@ -5546,7 +5567,7 @@ function askBlock(r, bare) {
   if (!h) return '';
   // bare: 내 정보 '남은 질문'처럼 머리말이 이미 있는 자리 — 질문마다 같은 말을 되풀이하지 않는다.
   if (bare) return '<div class="askwrap bare">' + h + '</div>';
-  return '<div class="askwrap"><div class="ask-head">이것만 알려주시면 판단합니다</div>' + h + '</div>';
+  return '<div class="askwrap"><div class="ask-head">' + (r.missingAny ? '아래 중 하나라도 해당하면 알려 주세요' : '이것만 알려주시면 판단합니다') + '</div>' + h + '</div>';
 }
 
 /* ── 누가 신청하는 제도인가 ────────────────────────────────────────────
@@ -5809,8 +5830,10 @@ function unknownWhy(r) {
   /* 창구 확인 — 대상이 앱이 받지 않는 사실(기초수급·다문화·직업 등)로 갈린다. 무엇을 확인할지는
      데이터가 원문 쪽 말로 적어 둔다(engine officeChecks). 물을 것이 남아 있어도 함께 보인다(2026-10-15). */
   if (r.status === 'unknown' && r.officeChecks && r.officeChecks.length) {
-    h += '<div class="fieldnote">이 제도는 <b>' + r.officeChecks.map(esc).join(' / ') +
-      '</b>에 해당해야 받을 수 있습니다. 앱에서는 이것을 확인할 수 없어 \'해당\'으로 세지 않았습니다. 신청 창구에 직접 확인해 주세요.</div>';
+    var list = r.officeChecks.map(esc).join(', ');
+    h += '<div class="fieldnote">' + (r.officeCheckAny
+      ? '위 조건에 해당하지 않더라도 <b>' + list + '</b>에 해당하면 받을 수 있습니다. 앱에서는 이것을 확인할 수 없어 \'해당\'으로 세지 않았습니다. 신청 창구에 확인해 주세요.'
+      : '이 제도는 <b>' + list + '</b>에 ' + (r.officeChecks.length > 1 ? '모두 ' : '') + '해당해야 받을 수 있습니다. 앱에서는 이것을 확인할 수 없어 \'해당\'으로 세지 않았습니다. 신청 창구에 직접 확인해 주세요.') + '</div>';
   }
   return h;
 }
@@ -6395,7 +6418,7 @@ function unlockNoteHtml(st) {
     // data-ask 는 값을 함께 실어야 동작하므로 빈 버튼을 두면 눌러도 아무 일이 없다.
     var ask = FIELD_ASK[unlock.field];
     if (ask && ask.opts && ask.opts.length) {
-      note += '<div class="ask-q" style="margin-top:9px">' + esc(ask.q) + '</div><div class="ask-opts">' +
+      note += '<div class="ask-q" style="margin-top:9px">' + esc(askQ(ask)) + '</div><div class="ask-opts">' +
         ask.opts.map(function (o) {
           return '<button class="askbtn" data-ask="' + esc(unlock.field) + '" data-val="' + esc(o[1]) + '">' + esc(o[0]) + '</button>';
         }).join('') + '</div>';
@@ -6493,6 +6516,9 @@ function viewMoney() {
   // 그 넷은 지역이 특정되지 않은 제도라, 모자란 것은 사용자 입력이 아니라 우리 데이터다.
   var needAsk = needAskable();
   var needOurs = EV.needsInput.filter(function (r) { return (r.missingFields || []).length === 0; });
+  var needOursAll = needOurs;   // 칩 개수는 나누기 전 값 — 창구 확인도 사용자가 할 일이 남은 것이다(plan 061)
+  var needOffice = needOurs.filter(function (r) { return r.unknownReason === 'officeCheck'; });
+  needOurs = needOurs.filter(function (r) { return r.unknownReason !== 'officeCheck'; });
   /* 해당 없는 이유 — 침묵하지 않는다. 내 지역·전국 제도만 추려 이유와 함께 보여준다 */
   var inMyRegion = function (r) { var rg = r.program.region; return !rg || rg.sido === profile.sido; };
   var skipped = EV.expired.concat(EV.excluded.filter(inMyRegion));
@@ -6504,7 +6530,7 @@ function viewMoney() {
     ['apply', '지금 신청', jc.leftN],
     ['confirmed', '확정', EV.counts.confirmed],
     ['region', '우리 동네', myRegionRows.length],
-    ['need', '답이 필요해요', needAsk.length + needOurs.length],
+    ['need', '답이 필요해요', needAsk.length + needOursAll.length],
     ['cond', '합계 밖', condNow.length],
     ['later', '나중에', jc.notYetN + laterExtra.length],
     ['skip', '해당 없음', skipped.length]
@@ -6539,7 +6565,11 @@ function viewMoney() {
   } else if (moneyChip === 'need') {
     h += moneyList('정보를 더 주시면 판단할 수 있습니다', needAsk, false,
       '조건 하나를 몰라 판단을 보류한 제도입니다. 모른다고 해서 해당 없음으로 접지 않습니다. 항목을 열면 부족한 값을 그 자리에서 입력할 수 있습니다.',
-      needOurs.length ? '' : '답을 기다리는 제도가 없습니다.');
+      (needOurs.length || needOffice.length) ? '' : '답을 기다리는 제도가 없습니다.');
+    if (needOffice.length) {
+      h += moneyList('신청 창구에서 확인해야 합니다', needOffice, false,
+        '앱이 묻지 않는 사실(기초생활수급·차상위, 다문화, 직업, 주택 등)로 대상이 갈리는 제도입니다. 항목마다 무엇을 확인해야 하는지 적어 두었습니다.', '');
+    }
     if (needOurs.length) {
       h += moneyList('저희가 아직 확인하지 못했습니다', needOurs, false,
         '조건을 확정하려면 공식 원문에 있어야 할 것이 비어 있는 제도입니다. ' +
@@ -6682,7 +6712,7 @@ var TRI_FIELDS = [
   // 이제 산모의 생년월을 받아 시점별로 계산한다.
   ['isSingleParent', '한부모 가족입니다', null],
   ['isAdoptiveFamily', '아이를 입양으로 맞이했습니다', '입양축하금처럼 입양 가정만 받는 제도를 판정합니다.'],
-  ['isInfertile', '난임 진단을 받았거나, 피임 없이 1년이 지나도 임신이 되지 않고 있습니다', '난임 시술비·약제비·한방 치료처럼 난임 부부만 받는 제도를 판정합니다.'],
+  ['isInfertile', '두 분 중 한 분이라도 난임 진단을 받았거나 난임 시술을 받았습니다(피임 없이 1년이 지나도 임신이 되지 않는 경우 포함)', '난임 시술비·약제비·한방 치료처럼 난임 부부만 받는 제도를 판정합니다.'],
   ['isHighRiskPregnancy', '산모가 고위험 임신 질환으로 입원 치료를 받았습니다',
     '19개 고위험 임신질환으로 입원치료를 받은 경우가 지원 대상입니다.']
 ];
@@ -7042,7 +7072,9 @@ function meQuestionsCard() {
   var triKeys = {};
   tri.forEach(function (o) { triKeys[o[0]] = 1; });
   var open = [], answered = [], seen = {};
+  var neededTri = {};
   var consider = function (f) {
+    if (triKeys[f]) neededTri[f] = 1;
     if (seen[f]) return;
     seen[f] = 1;
     // 특수 조건은 아래 3지선다가 맡는다 — 같은 질문을 예/아니오로 한 번 더 묻지 않는다(실측: 고위험 임신이 두 번 떴다).
@@ -7054,7 +7086,9 @@ function meQuestionsCard() {
   JOURNEY.forEach(function (j) { (j.missingFields || []).forEach(consider); });
   // 답한 것도 고칠 수 있게 — 값이 있는 인라인 질문 필드는 전부
   Object.keys(FIELD_ASK).forEach(function (f) { if (profile[f] != null) consider(f); });
-  var triOpen = tri.filter(function (o) { return profile[o[0]] == null; });
+  // 입양·난임은 그 칸이 걸린 제도가 지금 단계·지역에서 실제로 물을 때만 남은 질문으로 센다(plan 062) — 난임은 건강 정보다.
+  var ONLY_WHEN_NEEDED = { isAdoptiveFamily: 1, isInfertile: 1 };
+  var triOpen = tri.filter(function (o) { return profile[o[0]] == null && (!ONLY_WHEN_NEEDED[o[0]] || neededTri[o[0]]); });
   var triDone = tri.filter(function (o) { return profile[o[0]] != null; });
   var openN = open.length + triOpen.length;
   var progN = needAskable().length;
