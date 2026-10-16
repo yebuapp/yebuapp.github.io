@@ -1520,7 +1520,10 @@ function checkAgeRule(rule, p) {
   if (rule.asOf === 'calendarYear') {
     const b = ymToParts(ym);
     if (!b || !(p.__today instanceof Date)) return 'unknown';
-    return op(p.__today.getFullYear() - b.y, rule.age) ? 'pass' : 'fail';
+    const a0 = p.__today.getFullYear() - b.y;
+    // 원문은 '검사일·신청일의 해'를 본다 — 그 일이 올해일지 내년일지 모른다. 두 해의 답이 같을 때만 확정한다(plan 060).
+    const r0 = op(a0, rule.age), r1 = op(a0 + 1, rule.age);
+    return r0 === r1 ? (r0 ? 'pass' : 'fail') : 'unknown';
   }
 
   const at = rule.asOf === 'pregnancyConfirmation' ? toDate(p.pregnancyConfirmedOn)
@@ -1554,6 +1557,7 @@ function missingOfAgeRule(rule, p) {
     need.push('pregnancyConfirmedOn');
   }
   if (need.length) return need;
+  if (rule.asOf === 'calendarYear') return [];   // 해로만 세므로 생일 날짜를 물어도 풀리지 않는다(plan 060)
   // 필요한 값이 다 있는데도 판단이 갈린다면 생월이 걸린 것이다 — 그 달의 며칠인지만
   // 더 받으면 확정된다. 평소에는 묻지 않고 이때만 묻는다.
   if (src.day && checkAgeRule(rule, p) === 'unknown' && p[src.day] == null) return [src.day];
@@ -1616,7 +1620,9 @@ function missingOf(req, p) {
     // AND 갈래는 순차 관문이다 — 앞의 것을 모르는 채로 뒤의 것까지 묻지 않는다.
     // (나이도 모르는 사람에게 혼인 여부부터 함께 묻는 화면이 되면 안 된다)
     for (const r of req.allOf) {
-      if (checkRequirement(r, p) === 'unknown') return missingOf(r, p);
+      if (checkRequirement(r, p) !== 'unknown') continue;
+      const m = missingOf(r, p);
+      if (m.length) return m;   // 창구 확인처럼 물을 것이 없는 갈래는 건너뛰고 다음 관문을 본다(plan 060)
     }
     return [];
   }
@@ -1669,6 +1675,13 @@ function hasUnknownAsOf(req) {
   if (req.anyOf) return req.anyOf.some(hasUnknownAsOf);
   if (req.allOf) return req.allOf.some(hasUnknownAsOf);
   return req.ageRule?.asOf === 'unknown';
+}
+
+/** 연 나이(calendarYear) 조건이 이 요구사항 안에 있는가. */
+function hasCalendarYear(req) {
+  if (req.anyOf) return req.anyOf.some(hasCalendarYear);
+  if (req.allOf) return req.allOf.some(hasCalendarYear);
+  return req.ageRule?.asOf === 'calendarYear';
 }
 
 /** 판단 불가로 남은 요구사항 안의 창구 확인 문구들 — 화면이 사유를 지어내지 않도록 원문 쪽 문구를 그대로 넘긴다. */
@@ -2001,6 +2014,10 @@ function evaluate(profile, programs, today = new Date()) {
             reqs.some((r, i) => checks[i] === 'unknown' && hasUnknownAsOf(r))
           ) {
             unknownReason = 'sourceAgeAsOf';
+          } else if (
+            reqs.some((r, i) => checks[i] === 'unknown' && hasCalendarYear(r))
+          ) {
+            unknownReason = 'yearBoundary';
           } else if (officeChecks.length) {
             unknownReason = 'officeCheck';
           }
@@ -2031,7 +2048,11 @@ function evaluate(profile, programs, today = new Date()) {
 
     // 판단 불가여도 신청 자체가 막혔으면 누구도 받을 수 없다 — 묻는 것이 헛수고다(2026-10-16).
     // 해당 없음(ineligible)은 그대로 둔다: 기한이 아니라 조건이 이유다.
-    if ((status === 'eligible' || status === 'unknown') && blocked) status = 'expired';
+    // 지역을 모르면(region 'unknown') 내 지역 제도인지조차 모른다 — 남의 지역 마감을 '기한 지남'으로 쌓지 않는다(plan 060).
+    if ((status === 'eligible' || (status === 'unknown' && region === 'pass')) && blocked) {
+      status = 'expired';
+      missingFields = []; unknownReason = null; officeChecks = [];
+    }
 
     const rule = program.amountRule ? AMOUNT_RULES[program.amountRule] : null;
     // 금액의 갈래는 넷이다: 순위별 표 → 태아 수별 표 → 하드코딩 규칙 → 못 구함(사유).
@@ -5778,7 +5799,9 @@ var UNKNOWN_WHY = {
   regionNotIdentified:
     '지자체에 따라 있을 수 있는 제도인데, 저희가 <b>이 지역의 시행 여부와 금액</b>을 원문으로 확인하지 못했습니다.',
   sourceAgeAsOf:
-    '공식 안내가 나이를 <b>언제 기준</b>으로 재는지 밝히지 않았습니다. 신청일인지 검사일인지에 따라 답이 달라지는데 그 기준이 없어, 저희가 나이로 가르지 않았습니다. 위 대상 문구를 그대로 두었으니 관할 보건소에 확인해 주세요.'
+    '공식 안내가 나이를 <b>언제 기준</b>으로 재는지 밝히지 않았습니다. 신청일인지 검사일인지에 따라 답이 달라지는데 그 기준이 없어, 저희가 나이로 가르지 않았습니다. 위 대상 문구를 그대로 두었으니 관할 보건소에 확인해 주세요.',
+  yearBoundary:
+    '이 제도는 검사·신청하는 <b>해의 나이(연 나이)</b>로 판정합니다. 올해 하면 해당하지 않고 내년에 하면 해당하는(또는 그 반대인) 경계에 있어, 검사·신청할 날짜를 정한 뒤 창구에 확인해 주세요.'
 };
 function unknownWhy(r) {
   var t = UNKNOWN_WHY[r.unknownReason];
