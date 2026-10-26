@@ -668,6 +668,9 @@ b, strong { font-weight: 600; }
 /* 출처 줄 — 기관명·확인일. */
 .srcline { font-size: var(--fs-label); font-weight: 500; color: var(--mut); line-height: 1.55; }
 .srcline a { color: var(--mut); }
+/* 확인한 지 90일 넘은 정보 — .warn 과 같은 짝 토큰(plan 105) */
+.stale { display: block; margin-top: 4px; padding: 6px 10px; border-radius: var(--radius-xs);
+  background: var(--peach); color: var(--on-peach); font-weight: 500; }
 
 /* --- 탭바 --------------------------------------------------------------- */
 /* 떠 있는 알약 탭바 — 셸의 마지막 칸이라 flex-shrink:0 은 그대로다(2026-09-07 사고). */
@@ -3781,6 +3784,25 @@ var TODAY = new Date();
 // 자정으로 정규화 — 기한(toDate)은 항상 자정 기준인데 여기만 현재 시각이면
 // 오후 접속 시 round 가 하루를 깎는다(D-1 이 '오늘 마감'으로 보이는 사고).
 TODAY.setHours(0, 0, 0, 0);
+/* 확인일이 오늘로부터 며칠 전인지(plan 105). YYYY-MM-DD 가 아니거나 없는 날짜면 null.
+   달력 날짜 성분만 UTC 로 옮겨 세므로 기기 시간대·서머타임에 하루가 어긋나지 않는다. */
+function staleDays(checkedAt, today) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(checkedAt == null ? '' : checkedAt));
+  if (!m) return null;
+  var y = +m[1], mo = +m[2], d = +m[3];
+  var t = new Date(Date.UTC(y, mo - 1, d));
+  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return null;
+  var now = today || TODAY;
+  return Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - t.getTime()) / 86400000);
+}
+/* 출처 줄 — '기관 · 날짜 확인'. 확인한 지 90일을 넘었으면 원문을 다시 보라는 한 줄을 덧붙인다. */
+function checkedLine(name, checkedAt, today) {
+  var n = staleDays(checkedAt, today);
+  return '<div class="srcline">' + esc(name || '') +
+    (checkedAt ? ' · ' + esc(checkedAt) + ' 확인' : '') +
+    (n !== null && n > 90 ? '<span class="stale">확인한 지 3개월이 지났습니다. 신청 전에 원문을 한 번 더 확인해 주세요</span>' : '') +
+    '</div>';
+}
 /* 데이터의 실제 값 — 추측하지 않고 programs.json 에서 확인했다 */
 var LAYER = { national: '국가', province: '시·도', city: '시·군·구' };
 
@@ -4916,8 +4938,7 @@ function chkDetailBody(it) {
   h += quoteList(qs);
   h += unverifiedBlock(it.unverified);
   if (it.source) {
-    h += '<div class="srcline">' + esc(it.source.name) +
-      (it.source.checkedAt ? ' · ' + esc(it.source.checkedAt) + ' 확인' : '') + '</div>';
+    h += checkedLine(it.source.name, it.source.checkedAt);
   }
   return h;
 }
@@ -5016,8 +5037,7 @@ function tlRow(t, compact) {
     h += quoteList(it.quotes);
     h += unverifiedBlock(it.unverified);
     if (it.source) {
-      h += '<div class="srcline">' + esc(it.source.name) +
-        (it.source.checkedAt ? ' · ' + esc(it.source.checkedAt) + ' 확인' : '') + '</div>';
+      h += checkedLine(it.source.name, it.source.checkedAt);
       h += goLinks([{ url: it.source.url, label: it.category === '검사' ? '검사 안내 원문' : '안내 원문' }]);
     }
     h += '</div>';
@@ -5068,8 +5088,7 @@ function moRow(x, compact) {
     if (it.evidence && it.evidence.quote) h += '<div class="quote">&ldquo;' + esc(it.evidence.quote) + '&rdquo;</div>';
     h += unverifiedBlock(it.caveats);
     if (it.source) {
-      h += '<div class="srcline">' + esc(it.source.name) +
-        (it.source.checkedAt ? ' · ' + esc(it.source.checkedAt) + ' 확인' : '') + '</div>' +
+      h += checkedLine(it.source.name, it.source.checkedAt) +
         goLinks([{ url: it.source.url, label: '일정 안내 원문' }]);
     }
     h += '</div>';
@@ -5581,8 +5600,7 @@ function lifeDetailHtml(x) {
       h += '<div class="quote">&ldquo;' + esc(f.quote) + '&rdquo;</div>';
     }
     if (f.source) {
-      h += '<div class="srcline">' + esc(f.source.name) +
-        (f.source.checkedAt ? ' · ' + esc(f.source.checkedAt) + ' 확인' : '') + '</div>' +
+      h += checkedLine(f.source.name, f.source.checkedAt) +
         goLinks([{ url: f.source.url, label: '원문 보기' }]);
     }
   });
@@ -5632,7 +5650,7 @@ function goodsDetailHtml(x) {
   h += '<div class="lead">' + esc(x.when) + (x.qty ? ' · ' + esc(x.qty) : '') + '</div>';
   if (x.official) {
     h += '<div class="dl"><dd>' + esc(x.official.quote) + '</dd></div>' +
-      '<div class="srcline">' + esc(x.official.name) + ' · ' + esc(x.official.checkedAt) + ' 확인</div>' +
+      checkedLine(x.official.name, x.official.checkedAt) +
       goLinks([{ url: x.official.url, label: '원문 보기' }]);
   }
   (x.cautions || []).forEach(function (c) {
@@ -6446,8 +6464,7 @@ function programDetailHtml(r) {
   h += dl('법적 근거', g.legalBasis);
   if (g.evidence && g.evidence.quote) h += '<div class="quote">&ldquo;' + esc(g.evidence.quote) + '&rdquo;</div>';
   if (g.source) {
-    h += '<div class="srcline">' + esc(g.source.name || '') +
-      (g.source.checkedAt ? ' · ' + esc(g.source.checkedAt) + ' 확인' : '') + '</div>';
+    h += checkedLine(g.source.name, g.source.checkedAt);
   }
   // 데이터 오류 제보 — 이 DB 의 생명은 정확성이다. 다르면 바로 알릴 길을 연다.
   h += '<div class="golinks"><a class="golink" href="' + esc(reportHref(g)) + '">공식 정보와 다른가요? 알려주세요</a></div>';
@@ -8250,7 +8267,7 @@ function sosCard(x) {
     (x['덧붙임'] ? '<div class="sos-more">' + esc(x['덧붙임']) + '</div>' : '') +
     (x['출처불일치'] ? '<div class="sos-more warnline">공식 자료 안에서도 기준이 갈리는 항목입니다. 다니는 병원 기준을 확인하세요.</div>' : '') +
     '<div class="quote">&ldquo;' + esc(x['인용']) + '&rdquo;</div>' +
-    '<div class="srcline">' + esc(x['출처'].name) + ' · ' + esc(x['출처'].checkedAt) + ' 확인</div>' +
+    checkedLine(x['출처'].name, x['출처'].checkedAt) +
     goLinks([{ url: x['출처'].url, label: '원문 확인' }]) +
     '</div>';
 }
@@ -8466,6 +8483,8 @@ function searchDetail(e) {
     h += dlRow('유의 사항', fmtDates(r.notes));
     h += dlRow('법적 근거', r.legalBasis);
     if (r.evidence && r.evidence.quote) h += quoteList([{ text: r.evidence.quote, source: r.source && r.source.name, url: r.evidence.url }]);
+    // 혜택 탭 상세(moneyRow)와 같은 출처·확인일 줄 — 검색으로 들어와도 낡은 정보에 같은 표시가 붙는다(plan 105).
+    if (r.source) h += checkedLine(r.source.name, r.source.checkedAt);
     h += goLinks([
       { url: r.applyUrl || r.onlineApplyUrl, label: applyLabel(r), ev: 'apply-open', id: r.id, layer: r.layer },
       { url: r.source && r.source.url, label: '제도 안내 원문' }
