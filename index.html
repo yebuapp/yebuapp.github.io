@@ -4085,7 +4085,29 @@ function errSourceOf(stack, pageUrl) {
   return 'other';
 }
 
-return {SHARED_FIELDS,sanitizeProfileFields,encodeInvite,decodeInvite,sharedChanges,sharedDiff,HEALTH_FIELDS,sharedPayload,migrateProfile,countsAsWeekTest,dateOf,afterBirthProfile,afterBirthExtra,weekMonday,retBucket,alertsFor,weeklyCardData,moneyState,benefitCardData,exportBackup,importBackup,RECEIVED_MAX_WON,normReceived,receivedSummary,syncMarkIds,VIEW_KEYS,viewPayload,encodeView,parseViewHash,parseAuthHash,LOGIN_MARK_TTL_MS,loginMarkOk,decodeView,incomeBracketEstimate,nestState,fmtDatesInText,srcLines,orderAmountRange,josa,shownWithoutRegion,nationalAskFieldPick,nationalAskNames,nationalAskSentence,nationalAskLabel,REPORT_KINDS,REPORT_MAX,REPORT_MIN,reportBodyOk,reportPayload,stemForms,SEARCH_SYNONYM_TERMS,synonymForms,searchRank,errSourceOf};
+/* ── 알림 일정 중복 전송 막기 (plan 113, 감사 2026-10-29 문제 3) ─────────────────────
+   앱을 열 때마다 알림 일정을 다시 올리던 것(2026-09-10 F03: 서버의 옛 예약에 반영되지 않던 구멍을 막으려는 의도)을
+   '같은 구독 주소 + 같은 알림 내용 + 같은 날'일 때만 건너뛴다. 날이 바뀌면 한 번은 반드시 보낸다.
+   기기 저장소에는 원문 대신 짧은 해시만 둔다. */
+/** 짧은 문자열 해시(djb2 변형, 32비트 → 36진수). 보안용이 아니라 '같은 값인가' 비교용이다. */
+function shortHash(s) {
+  const str = typeof s === 'string' ? s : String(s);
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 33) + str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+/** 기기에 남길 지문 — 구독 주소·알림 내용(JSON 문자열)·날짜(YYYY-MM-DD)를 각각 해시해 '|' 로 잇는다. 하나라도 없으면 ''. */
+function alertsFingerprint(endpoint, alertsJson, dayKey) {
+  if (!endpoint || typeof alertsJson !== 'string' || !alertsJson || !dayKey) return '';
+  return shortHash(endpoint) + '|' + shortHash(alertsJson) + '|' + dayKey;
+}
+/** 이미 보낸 지문(prev)과 지금 지문이 같으면 true — 이때만 전송을 건너뛴다. 빈 값·다른 값이면 false(= 보낸다). */
+function alertsPushSkip(prev, endpoint, alertsJson, dayKey) {
+  const fp = alertsFingerprint(endpoint, alertsJson, dayKey);
+  return !!fp && typeof prev === 'string' && prev === fp;
+}
+
+return {SHARED_FIELDS,sanitizeProfileFields,encodeInvite,decodeInvite,sharedChanges,sharedDiff,HEALTH_FIELDS,sharedPayload,migrateProfile,countsAsWeekTest,dateOf,afterBirthProfile,afterBirthExtra,weekMonday,retBucket,alertsFor,weeklyCardData,moneyState,benefitCardData,exportBackup,importBackup,RECEIVED_MAX_WON,normReceived,receivedSummary,syncMarkIds,VIEW_KEYS,viewPayload,encodeView,parseViewHash,parseAuthHash,LOGIN_MARK_TTL_MS,loginMarkOk,decodeView,incomeBracketEstimate,nestState,fmtDatesInText,srcLines,orderAmountRange,josa,shownWithoutRegion,nationalAskFieldPick,nationalAskNames,nationalAskSentence,nationalAskLabel,REPORT_KINDS,REPORT_MAX,REPORT_MIN,reportBodyOk,reportPayload,stemForms,SEARCH_SYNONYM_TERMS,synonymForms,searchRank,errSourceOf,shortHash,alertsFingerprint,alertsPushSkip};
 })();
 
 /* 제도 본체 (plan 112) — 분할 빌드(REGION_SPLIT)에서는 국가 제도 + 시·도가 비어 있는 지역 제도만 여기 있고,
@@ -4977,8 +4999,10 @@ function urlB64ToU8(s) {
   return a;
 }
 
+var ALERTS_PUSH_KEY = 'yebu.alertsPush';   /* 마지막으로 알림 일정을 서버에 올린 지문(해시만) — 구독을 켜거나 끌 때 비운다 */
 function pushSubscribe() {
   if (!pushSupported() || !sync.user) return;
+  store(ALERTS_PUSH_KEY, '');   /* 새로 켤 때는 첫 전송이 막히면 안 된다 */
   sync.msg = '알림을 켜는 중…'; sync.err = null; render();
   swReady().then(function (reg) {
     return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToU8(VAPID_PUBLIC) });
@@ -5003,7 +5027,7 @@ function pushSubscribe() {
   });
 }
 function pushUnsubscribe() {
-  sync.msg = '알림을 끄는 중…'; render();
+  sync.msg = '알림을 끄는 중…'; store(ALERTS_PUSH_KEY, ''); render();
   swReady()
     .then(function (reg) { return reg.pushManager.getSubscription(); })
     .then(function (s) {
@@ -5023,6 +5047,7 @@ function pushUnsubscribe() {
 var PUSH_DETACH_MS = 4000;
 function pushDetach() {
   if (!pushSupported()) return Promise.resolve();
+  store(ALERTS_PUSH_KEY, '');
   var work = swReady()
     .then(function (reg) { return reg.pushManager.getSubscription(); })
     .then(function (s) {
@@ -5050,9 +5075,17 @@ function pushTest() {
 /** 프로필이 바뀌면 예약된 알림도 다시 계산해 올린다(구독 중일 때만). */
 function pushAlertsUpdate() {
   if (!SUPA || !sync.user || pushState !== 'on' || !pushEndpoint) return;
+  /* 같은 구독 주소 + 같은 알림 내용 + 같은 날이면 다시 보내지 않는다(plan 113). 날이 바뀌면 한 번은 보낸다.
+     지문(해시)은 보내기가 성공한 뒤에만 기기에 남긴다 — 실패하면 다음에 다시 보낸다. */
+  var alerts = buildAlerts(), ep = pushEndpoint;
+  var aj = JSON.stringify(alerts), day = ENG.fmtDate(TODAY);
+  if (APPLOGIC.alertsPushSkip(store(ALERTS_PUSH_KEY), ep, aj, day)) return;
   SUPA.from('push_subscriptions')
-    .update({ alerts: buildAlerts(), updated_at: new Date().toISOString() })
-    .eq('endpoint', pushEndpoint).then(syncDone, onSyncFail);
+    .update({ alerts: alerts, updated_at: new Date().toISOString() })
+    .eq('endpoint', ep).then(function (r) {
+      if (r && r.error) { onSyncFail(); return; }
+      store(ALERTS_PUSH_KEY, APPLOGIC.alertsFingerprint(ep, aj, day));
+    }, onSyncFail);
 }
 
 /* ── 커플 해제 · 계정 삭제 ─────────────────────────────────────────────── */
