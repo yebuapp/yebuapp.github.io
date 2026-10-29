@@ -1,14 +1,28 @@
 /* 예부 서비스워커 — 네트워크 우선, 실패 시 캐시(오프라인 폴백).
-   캐시 키는 빌드마다 바뀌어(749d6aa1dc) 구버전이 눌러앉지 않는다. */
-var CACHE = 'yebu-749d6aa1dc';
+   캐시 키는 빌드마다 바뀌어(1e504854d2) 구버전이 눌러앉지 않는다. */
+var CACHE = 'yebu-1e504854d2';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+/* 시·도별 지역 제도 파일(rd/r-<코드>-<내용 해시>.json, plan 112) — 이름에 내용 해시가 들어 있어
+   같은 이름이면 같은 내용이다. 그래서 빌드마다 바뀌는 CACHE 가 아니라 따로 둔 캐시에 '캐시 우선'으로 둔다:
+   데이터가 그대로인 시·도는 배포가 바뀌어도 다시 받지 않는다. 활성화 때 지금 목록(RD_FILES) 밖 파일만 지운다. */
+var RD_CACHE = 'yebu-rd';
+var RD_FILES = ["r-gangwon-45ba54fe.json","r-gyeonggi-be160694.json","r-gyeongnam-0a59463f.json","r-gyeongbuk-a77f4704.json","r-daegu-073adae1.json","r-daejeon-b4e1aa10.json","r-busan-67953a5a.json","r-seoul-2060c931.json","r-sejong-6e9f4aa8.json","r-ulsan-f9c6bec6.json","r-incheon-bc930d68.json","r-jeonnam-gwangju-996fcb99.json","r-jeonbuk-4a0e1f9a.json","r-jeju-13fb8c45.json","r-chungnam-f180f5c1.json","r-chungbuk-22608c92.json"];
+var RD_RE = /\/rd\/r-[a-z0-9-]+-[0-9a-f]{8}\.json$/;
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(ASSETS); }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(keys.filter(function (k) { return k !== CACHE && k !== RD_CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () {
+    return caches.open(RD_CACHE).then(function (c) {
+      return c.keys().then(function (reqs) {
+        return Promise.all(reqs.filter(function (r) {
+          return RD_FILES.indexOf(new URL(r.url).pathname.split('/').pop()) < 0;
+        }).map(function (r) { return c.delete(r); }));
+      });
+    }).catch(function () {});
   }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function (e) {
@@ -24,6 +38,23 @@ self.addEventListener('fetch', function (e) {
   var url;
   try { url = new URL(e.request.url); } catch (err) { return; }
   if (url.origin !== self.location.origin) return;
+
+  /* 시·도 파일 — 캐시 우선. 쿼리가 붙은 주소는 여기로 오지 않고 아래 일반 경로를 탄다(쿼리 주소 미캐시 규칙 그대로).
+     성공한 응답만 넣는다. 캐시에도 없고 네트워크도 실패하면 그대로 실패를 돌려준다 — HTML 을 대신 주지 않는다. */
+  if (!url.search && RD_RE.test(url.pathname)) {
+    e.respondWith(
+      caches.open(RD_CACHE).then(function (c) {
+        return c.match(e.request).then(function (hit) {
+          if (hit) return hit;
+          return fetch(e.request).then(function (res) {
+            if (!(res && res.ok)) return res;
+            return c.put(e.request, res.clone()).catch(function () {}).then(function () { return res; });
+          });
+        });
+      })
+    );
+    return;
+  }
 
   e.respondWith(
     fetch(e.request).then(function (res) {
