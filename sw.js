@@ -1,12 +1,12 @@
 /* 예부 서비스워커 — 네트워크 우선, 실패 시 캐시(오프라인 폴백).
-   캐시 키는 빌드마다 바뀌어(6d1c26807e) 구버전이 눌러앉지 않는다. */
-var CACHE = 'yebu-6d1c26807e';
+   캐시 키는 빌드마다 바뀌어(a60344450a) 구버전이 눌러앉지 않는다. */
+var CACHE = 'yebu-a60344450a';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 /* 시·도별 지역 제도 파일(rd/r-<코드>-<내용 해시>.json, plan 112) — 이름에 내용 해시가 들어 있어
    같은 이름이면 같은 내용이다. 그래서 빌드마다 바뀌는 CACHE 가 아니라 따로 둔 캐시에 '캐시 우선'으로 둔다:
    데이터가 그대로인 시·도는 배포가 바뀌어도 다시 받지 않는다. 활성화 때 지금 목록(RD_FILES) 밖 파일만 지운다. */
 var RD_CACHE = 'yebu-rd';
-var RD_FILES = ["r-gangwon-45ba54fe.json","r-gyeonggi-c4416fed.json","r-gyeongnam-1ab83c74.json","r-gyeongbuk-750a56cd.json","r-daegu-073adae1.json","r-daejeon-d5a60c46.json","r-busan-67953a5a.json","r-seoul-f5e7d686.json","r-sejong-6e9f4aa8.json","r-ulsan-f9c6bec6.json","r-incheon-0bbae297.json","r-jeonnam-gwangju-996fcb99.json","r-jeonbuk-4a0e1f9a.json","r-jeju-13fb8c45.json","r-chungnam-f180f5c1.json","r-chungbuk-22608c92.json"];
+var RD_FILES = ["r-gangwon-45ba54fe.json","r-gyeonggi-69ffd33d.json","r-gyeongnam-1ab83c74.json","r-gyeongbuk-750a56cd.json","r-daegu-073adae1.json","r-daejeon-d5a60c46.json","r-busan-67953a5a.json","r-seoul-f5e7d686.json","r-sejong-6e9f4aa8.json","r-ulsan-f9c6bec6.json","r-incheon-0bbae297.json","r-jeonnam-gwangju-996fcb99.json","r-jeonbuk-4a0e1f9a.json","r-jeju-13fb8c45.json","r-chungnam-f180f5c1.json","r-chungbuk-22608c92.json"];
 var RD_RE = /\/rd\/r-[a-z0-9-]+-[0-9a-f]{8}\.json$/;
 
 self.addEventListener('install', function (e) {
