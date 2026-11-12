@@ -1044,7 +1044,7 @@ function rdFetch(file) {
 
 <!-- 호스팅 빌드에서만 supabase 벤더가 이 자리에 실린다 — 마크업 뒤(첫 화면을
      막지 않게)·앱 스크립트 앞(initSync 가 찾을 수 있게). 아티팩트는 빈 자리. -->
-<script src="vendor/supabase-2.112.4.min.js"></script>
+<script src="vendor/supabase-2.119.0.min.js"></script>
 
 <script>
 /* eslint-disable */
@@ -3607,7 +3607,7 @@ function parseViewHash(hash) {
 }
 
 /** 카카오 로그인 콜백 해시(#access_token=…&refresh_token=… 또는 #error=…)를 읽는다(plan 100).
- *  판별 키는 벤더 supabase-js 2.112.4 의 _isImplicitGrantCallback 과 같다: access_token·error·error_description·error_code.
+ *  판별 키는 벤더 supabase-js 의 _isImplicitGrantCallback 과 같다(2.112.4·2.119.0 본문 대조, 2026-11-12): access_token·error·error_description·error_code.
  *  그 키가 하나도 없으면 null — `#view=`(가족 읽기 전용 링크)나 빈 해시는 건드리지 않는다.
  *  error 는 error_description → error → error_code 순으로 처음 있는 값(없으면 null). */
 function parseAuthHash(hash) {
